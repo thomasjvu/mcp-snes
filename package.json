@@ -1,0 +1,32 @@
+{
+  "name": "mcp-snes",
+  "version": "1.0.0",
+  "description": "An SNES emulator for LLMs via MCP",
+  "main": "dist/index.js",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.2",
+    "canvas": "^3.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "multer": "^1.4.5-lts.2",
+    "open": "^10.1.1",
+    "zod": "^3.24.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "scripts": {
+    "build": "tsc && cp -r src/snes-core dist/snes-core",
+    "start": "node dist/index.js --stdio",
+    "start-sse": "node dist/index.js --sse",
+    "dev": "ts-node src/index.ts",
+    "debug": "tsc && npx @modelcontextprotocol/inspector node dist/index.js --stdio",
+    "debug-sse": "tsc && npx @modelcontextprotocol/inspector node dist/index.js --sse"
+  }
+}

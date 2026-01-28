@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+.claude/
+*.log
+mcp-snes.log
+roms/*.smc
+roms/*.sfc
+CLAUDE.md
