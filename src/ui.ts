@@ -462,11 +462,14 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
     /* LOGO */
     .sc-logo {
       position: absolute;
-      left: 175px;
+      left: 85px;
       top: 50px;
       width: 470px;
       height: 100px;
       z-index: 1;
+    }
+    .controller-jpeu .sc-logo {
+      left: 175px;
     }
     .sc-illustration {
       width: 40px;
@@ -476,6 +479,10 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
       background-color: var(--ctrl-logo);
       box-shadow: 38px 20px var(--ctrl-logo);
       translate: 25px 13px;
+      display: none;
+    }
+    .controller-jpeu .sc-illustration {
+      display: block;
     }
     .sc-illustration:before {
       content: "";
