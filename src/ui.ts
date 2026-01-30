@@ -65,6 +65,7 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
   <title>MCP-SNES</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Six+Caps&display=swap');
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -92,6 +93,7 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
       min-height: 100vh;
       margin: 0;
       padding: 16px 0 24px;
+      zoom: 0.8;
       background: linear-gradient(180deg, #1a1520 0%, #0d0a12 50%, #1a1520 100%);
       font-family: 'Press Start 2P', monospace;
       color: #eee;
@@ -210,9 +212,11 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
     /* ============ SETTINGS BAR ============ */
     .settings-bar {
       display: flex; align-items: center; justify-content: center; gap: 20px;
-      margin-top: 16px; padding: 8px 24px;
-      background: rgba(255,255,255,0.04); border-radius: 6px;
+      padding: 8px 24px;
+      background: rgba(30,30,30,0.85); border-radius: 6px;
       border: 1px solid rgba(255,255,255,0.06);
+      position: fixed; bottom: 16px; right: 16px; z-index: 100;
+      backdrop-filter: blur(8px);
     }
 
     .setting-group { display: flex; align-items: center; gap: 6px; }
@@ -231,338 +235,319 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
 
     .setting-divider { width: 1px; height: 18px; background: rgba(255,255,255,0.08); }
 
-    /* ============ SNES CONTROLLER (authentic dog-bone) ============ */
-    .snes-controller { margin-top: 16px; position: relative; }
-
-    /* Main rectangular body */
-    .controller-body {
+    /* ============ SNES CONTROLLER ============ */
+    .snes-controller {
+      --ctrl-primary: #d1d1cf;
+      --ctrl-secondary: #a7a7a5;
+      --ctrl-logo: #828380;
+      --ctrl-btn-default: #757573;
+      /* USA (default): purple scheme */
+      --ctrl-btn-a: #5c3a95;
+      --ctrl-btn-b: #4b2d7f;
+      --ctrl-btn-x: #8b6cc0;
+      --ctrl-btn-y: #6b4fa0;
+      margin-top: 16px;
       position: relative;
-      width: 560px;
-      height: 220px;
-      background: linear-gradient(180deg, #c4c4c4 0%, #b7b7b7 40%, #a8a8a8 100%);
-      border-radius: 12px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 4px rgba(0,0,0,0.1);
-      margin: 0 auto;
+      width: 677px;
+      height: 292px;
+      overflow: visible;
     }
 
-    /* L shoulder button (pseudo-element) */
-    .controller-body::before {
-      content: '';
+    /* JP/EU color scheme */
+    .snes-controller.controller-jpeu {
+      --ctrl-btn-a: #fa5548;
+      --ctrl-btn-b: #ffd530;
+      --ctrl-btn-x: #1574c9;
+      --ctrl-btn-y: #00b873;
+    }
+
+    .snes-controller .sc-circle { aspect-ratio: 1; border-radius: 50%; }
+
+    .sc-body {
+      transform: scale(0.47);
+      transform-origin: top left;
+      width: 1440px;
+      height: 620px;
+      display: flex;
+      justify-content: center;
       position: absolute;
-      z-index: -1;
-      top: -6px;
-      left: 20px;
-      height: 22px;
-      width: 120px;
-      background: linear-gradient(180deg, #b0b0b0 0%, #a0a0a0 100%);
-      border-radius: 10px 10px 0 0;
-      box-shadow: 0 -2px 4px rgba(0,0,0,0.3);
+      top: 0;
+      left: 0;
     }
 
-    /* R shoulder button (pseudo-element) */
-    .controller-body::after {
-      content: '';
-      position: absolute;
-      z-index: -1;
-      top: -6px;
-      right: 20px;
-      height: 22px;
-      width: 120px;
-      background: linear-gradient(180deg, #b0b0b0 0%, #a0a0a0 100%);
-      border-radius: 10px 10px 0 0;
-      box-shadow: 0 -2px 4px rgba(0,0,0,0.3);
-    }
-
-    /* Left circular extension */
-    .controller-left-circle {
-      position: absolute;
-      height: 240px;
-      width: 240px;
-      background: radial-gradient(circle at 50% 50%, #c0c0c0 0%, #b7b7b7 50%, #a8a8a8 100%);
-      border-radius: 50%;
-      left: -120px;
-      top: 50%;
-      transform: translateY(-50%);
-      box-shadow: 0 6px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
-      z-index: 0;
-    }
-
-    /* Right circular extension */
-    .controller-right-circle {
-      position: absolute;
-      height: 240px;
-      width: 240px;
-      background: radial-gradient(circle at 50% 50%, #c0c0c0 0%, #b7b7b7 50%, #a8a8a8 100%);
-      border-radius: 50%;
-      right: -120px;
-      top: 50%;
-      transform: translateY(-50%);
-      box-shadow: 0 6px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
-      z-index: 0;
-    }
-
-    /* Inner face area */
-    .controller-face {
+    .sc-center {
+      width: 950px;
+      height: 550px;
+      background-color: var(--ctrl-primary);
       position: relative;
-      z-index: 1;
+    }
+
+    .sc-side {
+      position: absolute;
+      height: 620px;
+      background-color: var(--ctrl-primary);
+    }
+
+    .sc-side.sc-left,
+    .sc-side.sc-right {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      height: 100%;
-      padding: 20px 0;
+      justify-content: center;
     }
-
-    /* D-PAD area with concave circle — centered in left circle */
-    .dpad-area {
-      position: relative;
-      width: 140px;
-      height: 140px;
-      flex-shrink: 0;
-      margin-left: -70px;
-      background: radial-gradient(circle, #aaa 0%, #b7b7b7 70%);
+    .sc-side.sc-left:after,
+    .sc-side.sc-right:after {
+      content: "";
       border-radius: 50%;
-      box-shadow: inset 0 2px 6px rgba(0,0,0,0.25);
+      aspect-ratio: 1;
     }
 
-    .dpad-center {
+    .sc-side.sc-left { left: 0; }
+    .sc-side.sc-left:after {
+      width: 330px;
+      box-shadow: inset 0px 10px 10px -10px rgba(0,0,0,0.5),
+        inset 10px 0px 10px -10px rgba(0,0,0,0.5),
+        10px 10px 10px -10px rgba(255,255,255,0.6);
+    }
+
+    .sc-side.sc-right { right: 0; }
+    .sc-side.sc-right:after {
+      background-color: var(--ctrl-secondary);
+      width: 540px;
+    }
+
+    /* D-PAD */
+    .sc-dpad {
       position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 38px; height: 38px;
-      background: #636363;
-      border-radius: 3px;
+      height: 240px;
+      aspect-ratio: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       z-index: 1;
     }
-
-    .dpad-btn {
+    .sc-dpad:after {
+      content: "";
+      height: 60px;
+      aspect-ratio: 1;
       position: absolute;
-      background: #636363;
+      border-radius: 50%;
+      box-shadow: inset 10px 10px 30px -10px rgba(0,0,0,0.2),
+        inset -10px -10px 30px 0px rgba(255,255,255,0.1);
+    }
+    .sc-dpad .sc-dpad-lr { rotate: 90deg; }
+
+    .sc-dpad > div {
+      height: 100%;
+      width: 80px;
+      background-color: var(--ctrl-btn-default);
+      position: absolute;
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+    }
+    .sc-dpad > div:before,
+    .sc-dpad > div:after {
+      content: "";
+      position: absolute;
+      border: 25px solid transparent;
+      border-top-width: 10px;
+      border-bottom: 50px solid rgba(0,0,0,0.05);
+    }
+    .sc-dpad > div:after {
+      rotate: 180deg;
+      bottom: 0;
+    }
+
+    /* D-pad clickable overlay buttons */
+    .sc-dpad-btn {
+      position: absolute;
+      background: transparent;
       border: none;
       cursor: pointer;
       z-index: 2;
-      transition: background 0.08s;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
     }
-    .dpad-btn:hover { background: #707070; }
-    .dpad-btn:active, .dpad-btn.pressed { background: #555; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
+    .sc-dpad-btn:active, .sc-dpad-btn.pressed {
+      background: rgba(0,0,0,0.15);
+    }
+    .sc-dpad-btn.sc-dp-up    { top: 0; left: 50%; transform: translateX(-50%); width: 80px; height: 50%; border-radius: 10px 10px 0 0; }
+    .sc-dpad-btn.sc-dp-down  { bottom: 0; left: 50%; transform: translateX(-50%); width: 80px; height: 50%; border-radius: 0 0 10px 10px; }
+    .sc-dpad-btn.sc-dp-left  { left: 0; top: 50%; transform: translateY(-50%); height: 80px; width: 50%; border-radius: 10px 0 0 10px; }
+    .sc-dpad-btn.sc-dp-right { right: 0; top: 50%; transform: translateY(-50%); height: 80px; width: 50%; border-radius: 0 10px 10px 0; }
 
-    .dpad-up {
-      width: 38px; height: 42px;
-      top: 10px; left: 50%;
-      transform: translateX(-50%);
-      border-radius: 4px 4px 0 0;
-    }
-    .dpad-down {
-      width: 38px; height: 42px;
-      bottom: 10px; left: 50%;
-      transform: translateX(-50%);
-      border-radius: 0 0 4px 4px;
-    }
-    .dpad-left {
-      width: 42px; height: 38px;
-      left: 10px; top: 50%;
-      transform: translateY(-50%);
-      border-radius: 4px 0 0 4px;
-    }
-    .dpad-right {
-      width: 42px; height: 38px;
-      right: 10px; top: 50%;
-      transform: translateY(-50%);
-      border-radius: 0 4px 4px 0;
-    }
-
-    /* Arrow indicators on d-pad */
-    .dpad-btn::after {
-      content: ''; position: absolute; display: block;
-      border-style: solid; border-color: transparent;
-      opacity: 0.35;
-    }
-    .dpad-up::after { border-width: 0 7px 8px 7px; border-bottom-color: #5e5e5e; top: 10px; left: 50%; transform: translateX(-50%); }
-    .dpad-down::after { border-width: 8px 7px 0 7px; border-top-color: #5e5e5e; bottom: 10px; left: 50%; transform: translateX(-50%); }
-    .dpad-left::after { border-width: 7px 8px 7px 0; border-right-color: #5e5e5e; left: 10px; top: 50%; transform: translateY(-50%); }
-    .dpad-right::after { border-width: 7px 0 7px 8px; border-left-color: #5e5e5e; right: 10px; top: 50%; transform: translateY(-50%); }
-
-    /* CENTER area: branding + Select/Start */
-    .center-buttons {
+    /* FACE BUTTON PAIRS */
+    .sc-button-pair {
+      width: 310px;
+      height: 140px;
+      border-radius: 9999px;
+      position: absolute;
+      background-color: var(--ctrl-primary);
+      rotate: -38deg;
       display: flex;
-      flex-direction: column;
+      gap: 60px;
+      justify-content: center;
       align-items: center;
-      justify-content: flex-start;
-      flex-shrink: 0;
-      z-index: 1;
-      height: 100%;
-      padding-top: 16px;
-      gap: 24px;
+    }
+    .sc-button-pair.sc-xy {
+      left: 100px;
+      transform-origin: 70px 70px;
+    }
+    .sc-button-pair.sc-ab {
+      right: 100px;
+      transform-origin: 240px 70px;
     }
 
-    .controller-branding {
-      font-size: 5px;
-      color: #777;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      text-align: center;
-      line-height: 1.8;
-    }
-
-    .select-start-row {
-      display: flex;
-      flex-direction: row;
-      gap: 28px;
-      transform: rotate(-25deg);
-    }
-
-    .pill-btn-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .pill-btn-label { font-size: 5px; color: #888; letter-spacing: 1px; text-transform: uppercase; }
-
-    .pill-btn {
-      width: 44px; height: 14px;
-      background: linear-gradient(180deg, #8a8a8a 0%, #6a6a6a 100%);
-      border: none; border-radius: 7px;
+    .sc-face-btn {
+      width: 110px;
+      box-shadow: 0px 0px 5px 0px rgba(0,0,0,0.8);
+      border: none;
       cursor: pointer;
-      box-shadow: inset 0 -1px 2px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.3);
-      transition: background 0.08s;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 22px;
+      color: rgba(255,255,255,0.85);
+      text-shadow: 0 2px 3px rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
-    .pill-btn:hover { background: linear-gradient(180deg, #999 0%, #777 100%); }
-    .pill-btn:active, .pill-btn.pressed { background: linear-gradient(180deg, #666 0%, #555 100%); box-shadow: inset 0 1px 2px rgba(0,0,0,0.5); }
-
-    /* FACE BUTTONS area with dark concave circle — centered in right circle */
-    .face-area {
-      position: relative;
-      width: 150px;
-      height: 150px;
-      flex-shrink: 0;
-      margin-right: -75px;
-      background: radial-gradient(circle, #3a3a3a 0%, #4a4a4a 60%, #555 100%);
-      border-radius: 50%;
-      box-shadow: inset 0 3px 10px rgba(0,0,0,0.5);
+    .sc-face-btn:active, .sc-face-btn.pressed {
+      box-shadow: inset 0 0 10px 2px rgba(0,0,0,0.5);
     }
 
-    /* Gray connector shapes between buttons (cross shape background) */
-    .face-cross {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 50px; height: 50px;
-      z-index: 0;
-    }
-    .face-cross::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 50%;
-      transform: translateX(-50%);
-      width: 18px; height: 100%;
-      background: #505050;
-      border-radius: 4px;
-    }
-    .face-cross::after {
-      content: '';
-      position: absolute;
-      top: 50%; left: 0;
-      transform: translateY(-50%);
-      width: 100%; height: 18px;
-      background: #505050;
-      border-radius: 4px;
-    }
+    .sc-face-btn.sc-btn-a { background-color: var(--ctrl-btn-a); }
+    .sc-face-btn.sc-btn-b { background-color: var(--ctrl-btn-b); }
+    .sc-face-btn.sc-btn-x { background-color: var(--ctrl-btn-x); }
+    .sc-face-btn.sc-btn-y { background-color: var(--ctrl-btn-y); }
 
-    .face-btn {
+    /* SELECT / START */
+    .sc-center > .sc-sel-start {
+      z-index: 1;
       position: absolute;
-      width: 44px; height: 44px;
-      border-radius: 50%;
-      border: none; cursor: pointer;
-      font-family: 'Press Start 2P', monospace; font-size: 10px; color: rgba(255,255,255,0.9);
-      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.2), inset 0 -2px 4px rgba(0,0,0,0.25);
-      transition: all 0.08s;
+      left: 315px;
+      bottom: 230px;
+      cursor: pointer;
+    }
+    .sc-center > .sc-sel-start.sc-start-btn {
+      left: 475px;
+    }
+    .sc-center > .sc-sel-start:before {
+      content: "";
+      width: 110px;
+      height: 30px;
+      background-color: var(--ctrl-btn-default);
+      border-radius: 9999px;
+      rotate: -38deg;
+      position: absolute;
+      transform-origin: 15px;
+      margin-top: 50px;
+      display: block;
+    }
+    .sc-center > .sc-sel-start.pressed:before {
+      background-color: #5a5a58;
+    }
+    .sc-center > .sc-sel-start:after {
+      font-family: Arial, sans-serif;
+      color: var(--ctrl-btn-default);
+      font-size: 28px;
+      font-style: italic;
+      position: absolute;
+      top: 100px;
+      font-weight: 600;
+      scale: 0.75 1;
+      transform-origin: left;
+      letter-spacing: 3px;
+    }
+    .sc-center > .sc-sel-start.sc-select-btn:after { content: "SELECT"; }
+    .sc-center > .sc-sel-start.sc-start-btn:after { content: "START"; }
+
+    /* LOGO */
+    .sc-logo {
+      position: absolute;
+      left: 175px;
+      top: 50px;
+      width: 470px;
+      height: 100px;
       z-index: 1;
     }
-    .face-btn:active, .face-btn.pressed {
-      box-shadow: 0 2px 4px rgba(0,0,0,0.4), inset 0 2px 6px rgba(0,0,0,0.3);
-      transform: translateY(1px);
+    .sc-illustration {
+      width: 40px;
+      aspect-ratio: 1;
+      position: absolute;
+      border-radius: 100%;
+      background-color: var(--ctrl-logo);
+      box-shadow: 38px 20px var(--ctrl-logo);
+      translate: 25px 13px;
+    }
+    .sc-illustration:before {
+      content: "";
+      width: 40px;
+      aspect-ratio: 1;
+      position: absolute;
+      border-radius: 100%;
+      background-color: var(--ctrl-primary);
+      box-shadow: 38px 20px var(--ctrl-primary);
+      translate: -20px 20px;
+    }
+    .sc-illustration:after {
+      content: "";
+      width: 40px;
+      height: 20px;
+      position: absolute;
+      border-radius: 100%;
+      background-color: var(--ctrl-logo);
+      box-shadow: 38px 20px var(--ctrl-logo);
+      translate: -24px 33px;
+    }
+    .sc-text:before {
+      content: "SUPER NINTENDO";
+      font-family: "Six Caps", sans-serif;
+      color: var(--ctrl-logo);
+      font-size: 78px;
+      position: absolute;
+      left: 190px;
+      line-height: 70px;
+      transform: skewX(-10deg) scaleX(1.6);
+      letter-spacing: -2px;
+    }
+    .sc-text:after {
+      content: "ENTERTAINMENT SYSTEM";
+      position: absolute;
+      background-color: var(--ctrl-logo);
+      width: 580px;
+      height: 25px;
+      left: 5px;
+      top: 75px;
+      color: var(--ctrl-primary);
+      font-size: 24px;
+      line-height: 20px;
+      font-family: Arial, sans-serif;
+      transform: scaleX(0.6);
+      letter-spacing: 13.1px;
+      padding-left: 10px;
+      padding-top: 3px;
+      overflow: hidden;
+      white-space: nowrap;
+      font-style: italic;
+      box-sizing: border-box;
     }
 
-    /* SNES PAL colors: Y=green(left), X=blue(top), B=yellow(bottom), A=red(right) */
-    .face-y {
-      background: radial-gradient(circle at 40% 35%, #1da842, #158733);
-      top: 50%; left: 8px;
-      transform: translateY(-50%);
-    }
-    .face-y:hover { background: radial-gradient(circle at 40% 35%, #25c050, #1da842); }
-    .face-y:active, .face-y.pressed { background: radial-gradient(circle at 40% 35%, #117028, #0d5a20); }
-
-    .face-x {
-      background: radial-gradient(circle at 40% 35%, #1e50d0, #143ebc);
-      top: 8px; left: 50%;
-      transform: translateX(-50%);
-    }
-    .face-x:hover { background: radial-gradient(circle at 40% 35%, #2860e0, #1e50d0); }
-    .face-x:active, .face-x.pressed { background: radial-gradient(circle at 40% 35%, #0e3098, #0a2480); }
-
-    .face-b {
-      background: radial-gradient(circle at 40% 35%, #f0d000, #e2bd00);
-      bottom: 8px; left: 50%;
-      transform: translateX(-50%);
-    }
-    .face-b:hover { background: radial-gradient(circle at 40% 35%, #ffe020, #f0d000); }
-    .face-b:active, .face-b.pressed { background: radial-gradient(circle at 40% 35%, #c8a800, #b09200); }
-
-    .face-a {
-      background: radial-gradient(circle at 40% 35%, #e01818, #d10000);
-      top: 50%; right: 8px;
-      transform: translateY(-50%);
-    }
-    .face-a:hover { background: radial-gradient(circle at 40% 35%, #f02828, #e01818); }
-    .face-a:active, .face-a.pressed { background: radial-gradient(circle at 40% 35%, #b00000, #900000); }
-
-    .face-btn-label { font-size: 7px; color: rgba(255,255,255,0.5); position: absolute; z-index: 2; pointer-events: none; display: none; }
-
-    /* === USA Controller Theme (light/dark purple) === */
-    .controller-usa .face-y,
-    .controller-usa .face-x {
-      background: radial-gradient(circle at 40% 35%, #8b6cc0, #6b4fa0);
-    }
-    .controller-usa .face-y:hover,
-    .controller-usa .face-x:hover {
-      background: radial-gradient(circle at 40% 35%, #9b7cd0, #7b5fb0);
-    }
-    .controller-usa .face-y:active, .controller-usa .face-y.pressed,
-    .controller-usa .face-x:active, .controller-usa .face-x.pressed {
-      background: radial-gradient(circle at 40% 35%, #5a3d88, #4a3070);
-    }
-    .controller-usa .face-a,
-    .controller-usa .face-b {
-      background: radial-gradient(circle at 40% 35%, #5c3a95, #4b2d7f);
-    }
-    .controller-usa .face-a:hover,
-    .controller-usa .face-b:hover {
-      background: radial-gradient(circle at 40% 35%, #6c4aa5, #5c3a95);
-    }
-    .controller-usa .face-a:active, .controller-usa .face-a.pressed,
-    .controller-usa .face-b:active, .controller-usa .face-b.pressed {
-      background: radial-gradient(circle at 40% 35%, #3a2066, #2e1855);
-    }
-    .controller-usa .face-cross::before,
-    .controller-usa .face-cross::after {
-      background: #454;
-    }
-
-    /* SHOULDER BUTTONS (L/R) - sit atop the controller body */
+    /* SHOULDER BUTTONS (L/R) — aligned over wing centers */
     .shoulder-row {
-      display: flex; justify-content: space-between; padding: 0 30px; margin-bottom: 0;
-      position: relative; z-index: 2;
+      display: flex; justify-content: space-between;
+      width: 677px; padding: 0 84px;
+      position: absolute; top: 0; z-index: 2;
+      box-sizing: border-box;
+      pointer-events: none;
     }
 
     .shoulder-btn {
-      width: 100px; height: 24px; border: none; cursor: pointer;
-      font-family: 'Press Start 2P', monospace; font-size: 8px; color: #fff;
-      background: linear-gradient(180deg, #b0b0b0 0%, #909090 100%);
-      border-radius: 10px 10px 4px 4px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
-      transition: all 0.08s;
+      width: 105px; height: 10px; border: none; cursor: pointer;
+      font-size: 0; color: transparent;
+      background: transparent;
+      opacity: 0;
+      pointer-events: auto;
     }
-    .shoulder-btn:hover { background: linear-gradient(180deg, #c0c0c0 0%, #a0a0a0 100%); }
     .shoulder-btn:active, .shoulder-btn.pressed {
-      background: linear-gradient(180deg, #888 0%, #707070 100%);
-      box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+      opacity: 0;
     }
 
     /* BACK LINK */
@@ -652,7 +637,7 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
     </div>
     <div class="setting-divider"></div>
     <div class="setting-group">
-      <button class="setting-btn active" id="btn-region">JP/EU</button>
+      <button class="setting-btn active" id="btn-region">USA</button>
     </div>
   </div>
 
@@ -661,39 +646,36 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
   <!-- SNES Controller -->
   <div class="snes-controller">
     <div class="shoulder-row">
-      <button class="shoulder-btn" id="btn-l">L</button>
-      <button class="shoulder-btn" id="btn-r">R</button>
+      <button class="shoulder-btn shoulder-l" id="btn-l"></button>
+      <button class="shoulder-btn shoulder-r" id="btn-r"></button>
     </div>
-    <div class="controller-body">
-      <div class="controller-left-circle"></div>
-      <div class="controller-right-circle"></div>
-      <div class="controller-face">
-        <div class="dpad-area">
-          <div class="dpad-center"></div>
-          <button class="dpad-btn dpad-up" id="btn-up" title="Up"></button>
-          <button class="dpad-btn dpad-down" id="btn-down" title="Down"></button>
-          <button class="dpad-btn dpad-left" id="btn-left" title="Left"></button>
-          <button class="dpad-btn dpad-right" id="btn-right" title="Right"></button>
+    <div class="sc-body">
+      <div class="sc-center">
+        <div class="sc-sel-start sc-select-btn" id="btn-select"></div>
+        <div class="sc-sel-start sc-start-btn" id="btn-start"></div>
+        <div class="sc-logo">
+          <div class="sc-illustration"></div>
+          <div class="sc-text"></div>
         </div>
-        <div class="center-buttons">
-          <div class="controller-branding">SUPER NINTENDO<br>ENTERTAINMENT SYSTEM</div>
-          <div class="select-start-row">
-            <div class="pill-btn-wrap">
-              <span class="pill-btn-label">Select</span>
-              <button class="pill-btn" id="btn-select"></button>
-            </div>
-            <div class="pill-btn-wrap">
-              <span class="pill-btn-label">Start</span>
-              <button class="pill-btn" id="btn-start"></button>
-            </div>
-          </div>
+      </div>
+      <div class="sc-side sc-left sc-circle">
+        <div class="sc-dpad">
+          <div class="sc-dpad-ud"></div>
+          <div class="sc-dpad-lr"></div>
+          <button class="sc-dpad-btn sc-dp-up" id="btn-up"></button>
+          <button class="sc-dpad-btn sc-dp-down" id="btn-down"></button>
+          <button class="sc-dpad-btn sc-dp-left" id="btn-left"></button>
+          <button class="sc-dpad-btn sc-dp-right" id="btn-right"></button>
         </div>
-        <div class="face-area">
-          <div class="face-cross"></div>
-          <button class="face-btn face-x" id="btn-x">X</button>
-          <button class="face-btn face-y" id="btn-y">Y</button>
-          <button class="face-btn face-a" id="btn-a">A</button>
-          <button class="face-btn face-b" id="btn-b">B</button>
+      </div>
+      <div class="sc-side sc-right sc-circle">
+        <div class="sc-button-pair sc-xy">
+          <button class="sc-face-btn sc-btn-y sc-circle" id="btn-y">Y</button>
+          <button class="sc-face-btn sc-btn-x sc-circle" id="btn-x">X</button>
+        </div>
+        <div class="sc-button-pair sc-ab">
+          <button class="sc-face-btn sc-btn-b sc-circle" id="btn-b">B</button>
+          <button class="sc-face-btn sc-btn-a sc-circle" id="btn-a">A</button>
         </div>
       </div>
     </div>
@@ -967,11 +949,11 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
     // Region toggle: JP/EU (colored) vs USA (purple)
     var regionBtn = document.getElementById('btn-region');
     var controllerEl = document.querySelector('.snes-controller');
-    var isUSA = false;
+    var isUSA = true;
 
     function toggleRegion() {
       isUSA = !isUSA;
-      controllerEl.classList.toggle('controller-usa', isUSA);
+      controllerEl.classList.toggle('controller-jpeu', !isUSA);
       regionBtn.textContent = isUSA ? 'USA' : 'JP/EU';
     }
 
@@ -1287,7 +1269,7 @@ export function setupRomSelectionUI(app: express.Application, emulatorService: E
 
     .img-panel img {
       width: 100%; height: 100%;
-      object-fit: cover;
+      object-fit: fill;
       display: block;
     }
 
