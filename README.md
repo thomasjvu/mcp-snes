@@ -23,33 +23,49 @@ npm install
 npm run build
 ```
 
-## Usage
+## Usage with Claude Code
 
-### Stdio mode (default)
+The easiest way to use mcp-snes is with Claude Code. From the project directory:
+
+```bash
+cd mcp-snes
+claude
+```
+
+The project includes an `.mcp.json` config that automatically registers the MCP server when Claude Code starts from this directory. Claude will be able to load ROMs, press buttons, and see the screen.
+
+The web UI is available at `http://localhost:3002` while the MCP server is running.
+
+> **Note:** The MCP server only activates when Claude Code is launched from the project directory. To install globally instead, run:
+> ```bash
+> claude mcp add --scope user mcp-snes -- node /path/to/mcp-snes/dist/index.js --stdio
+> ```
+
+### Standalone usage
+
+#### Stdio mode (default)
 
 ```bash
 ROM_PATH=./roms/game.smc npm start
 ```
 
-### SSE mode
+#### SSE mode
 
 ```bash
 ROM_PATH=./roms/game.smc npm run start-sse
 ```
 
-### Development
+#### Development
 
 ```bash
 npm run dev
 ```
 
-### MCP Inspector
+#### MCP Inspector
 
 ```bash
 npm run debug
 ```
-
-The web UI is available at `http://localhost:3001`.
 
 ## Environment Variables
 

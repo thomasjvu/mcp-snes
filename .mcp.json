@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "mcp-snes": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "dist/index.js",
+        "--stdio"
+      ],
+      "env": {
+        "SERVER_PORT": "3002"
+      }
+    }
+  }
+}

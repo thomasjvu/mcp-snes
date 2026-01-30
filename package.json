@@ -22,7 +22,7 @@
     "typescript": "^5.8.3"
   },
   "scripts": {
-    "build": "tsc && cp -r src/snes-core dist/snes-core",
+    "build": "tsc && rm -rf dist/snes-core && cp -r src/snes-core dist/snes-core",
     "start": "node dist/index.js --stdio",
     "start-sse": "node dist/index.js --sse",
     "dev": "ts-node src/index.ts",
