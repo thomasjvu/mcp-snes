@@ -9,6 +9,7 @@ import express, { Request, Response } from 'express';
 import http from 'http';
 import multer from 'multer';
 import { setupWebUI, setupRomSelectionUI } from '../ui';
+import { WsSync } from '../wsSync';
 import { log } from '../utils/logger';
 
 export async function startStdioServer(): Promise<void> {
@@ -95,6 +96,9 @@ export async function startStdioServer(): Promise<void> {
 
   // Start the Express server
   const httpServer = http.createServer(app);
+  const wsSync = new WsSync(httpServer);
+  wsSync.setEmulatorService(emulatorService);
+  emulatorService.setWsSync(wsSync);
   httpServer.listen(port, () => {
     log.info(`SNES Emulator available at http://localhost:${port}/emulator`);
     log.info(`ROM Selection available at http://localhost:${port}/`);

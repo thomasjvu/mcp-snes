@@ -835,6 +835,28 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
       ctx.putImageData(imageData, 0, 0);
     }
 
+    // ─── Input conflict tracking ─────────────────────────────
+    var userHeldButtons = {};  // btnId -> true when user is holding
+    var mcpHoldCount = {};     // btnId -> count of active MCP holds
+
+    // Reverse map: SnesJs button ID → button name string for WebSocket
+    var btnIdToName = {};
+    btnIdToName[BTN.UP] = 'UP'; btnIdToName[BTN.DOWN] = 'DOWN';
+    btnIdToName[BTN.LEFT] = 'LEFT'; btnIdToName[BTN.RIGHT] = 'RIGHT';
+    btnIdToName[BTN.A] = 'A'; btnIdToName[BTN.B] = 'B';
+    btnIdToName[BTN.X] = 'X'; btnIdToName[BTN.Y] = 'Y';
+    btnIdToName[BTN.L] = 'L'; btnIdToName[BTN.R] = 'R';
+    btnIdToName[BTN.START] = 'START'; btnIdToName[BTN.SELECT] = 'SELECT';
+
+    var syncWs = null; // set by connectWs()
+
+    function sendButtonToServer(btnId, durationFrames) {
+      var name = btnIdToName[btnId];
+      if (name && syncWs && syncWs.readyState === WebSocket.OPEN) {
+        syncWs.send(JSON.stringify({ type: 'button_press', button: name, durationFrames: durationFrames }));
+      }
+    }
+
     // ─── Controller Input (keyboard) ─────────────────────────
     // Arrows=D-pad, Z=B, X=A, A=Y, S=X, Q=L, W=R, Enter=Start, Shift=Select
     var keyMap = {
@@ -859,6 +881,8 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
       'Enter': 'btn-start', 'Shift': 'btn-select'
     };
 
+    var keyDownTime = {};  // btnId -> timestamp when key was pressed
+
     document.addEventListener('keydown', function(e) {
       if (e.target.tagName === 'INPUT') return;
       var btn = keyMap[e.key];
@@ -866,6 +890,10 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
         e.preventDefault();
         resumeAudio();
         snes.setPad1ButtonPressed(btn);
+        if (!userHeldButtons[btn]) {
+          keyDownTime[btn] = performance.now();
+        }
+        userHeldButtons[btn] = true;
         var el = document.getElementById(keyBtnMap[e.key]);
         if (el) el.classList.add('pressed');
       }
@@ -876,9 +904,18 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
     document.addEventListener('keyup', function(e) {
       var btn = keyMap[e.key];
       if (btn !== undefined) {
-        snes.setPad1ButtonReleased(btn);
+        // Calculate how many frames the key was held
+        var held = keyDownTime[btn] ? performance.now() - keyDownTime[btn] : 0;
+        var frames = Math.max(1, Math.round(held / (1000 / 60)));
+        delete keyDownTime[btn];
+        sendButtonToServer(btn, frames);
+
+        delete userHeldButtons[btn];
+        if (!mcpHoldCount[btn]) {
+          snes.setPad1ButtonReleased(btn);
+        }
         var el = document.getElementById(keyBtnMap[e.key]);
-        if (el) el.classList.remove('pressed');
+        if (el && !mcpHoldCount[btn]) el.classList.remove('pressed');
       }
     });
 
@@ -898,6 +935,8 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
       ['btn-select', BTN.SELECT]
     ];
 
+    var pointerDownTime = {};  // btnId -> timestamp
+
     btnMapping.forEach(function(pair) {
       var el = document.getElementById(pair[0]);
       var snesBtn = pair[1];
@@ -905,16 +944,19 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
         e.preventDefault();
         resumeAudio();
         snes.setPad1ButtonPressed(snesBtn);
+        pointerDownTime[snesBtn] = performance.now();
         el.classList.add('pressed');
       });
-      el.addEventListener('pointerup', function() {
+      function onRelease() {
         snes.setPad1ButtonReleased(snesBtn);
         el.classList.remove('pressed');
-      });
-      el.addEventListener('pointerleave', function() {
-        snes.setPad1ButtonReleased(snesBtn);
-        el.classList.remove('pressed');
-      });
+        var held = pointerDownTime[snesBtn] ? performance.now() - pointerDownTime[snesBtn] : 0;
+        var frames = Math.max(1, Math.round(held / (1000 / 60)));
+        delete pointerDownTime[snesBtn];
+        sendButtonToServer(snesBtn, frames);
+      }
+      el.addEventListener('pointerup', onRelease);
+      el.addEventListener('pointerleave', onRelease);
     });
 
     // ─── Settings Controls ───────────────────────────────────
@@ -973,6 +1015,57 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
     document.getElementById('eject-btn').addEventListener('click', function() {
       window.location.href = '/';
     });
+
+    // ─── WebSocket sync (MCP → browser) ─────────────────────
+    var wsBtnNameToId = {
+      'UP': BTN.UP, 'DOWN': BTN.DOWN, 'LEFT': BTN.LEFT, 'RIGHT': BTN.RIGHT,
+      'A': BTN.A, 'B': BTN.B, 'X': BTN.X, 'Y': BTN.Y,
+      'L': BTN.L, 'R': BTN.R, 'START': BTN.START, 'SELECT': BTN.SELECT
+    };
+    var wsBtnNameToDom = {
+      'UP': 'btn-up', 'DOWN': 'btn-down', 'LEFT': 'btn-left', 'RIGHT': 'btn-right',
+      'A': 'btn-a', 'B': 'btn-b', 'X': 'btn-x', 'Y': 'btn-y',
+      'L': 'btn-l', 'R': 'btn-r', 'START': 'btn-start', 'SELECT': 'btn-select'
+    };
+
+    function connectWs() {
+      var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      var ws = new WebSocket(proto + '//' + location.host + '/ws');
+      ws.onopen = function() { syncWs = ws; };
+      ws.onmessage = function(ev) {
+        var msg;
+        try { msg = JSON.parse(ev.data); } catch(e) { return; }
+
+        if (msg.type === 'button_press') {
+          var btnId = wsBtnNameToId[msg.button];
+          if (btnId === undefined) return;
+          var domId = wsBtnNameToDom[msg.button];
+
+          snes.setPad1ButtonPressed(btnId);
+          mcpHoldCount[btnId] = (mcpHoldCount[btnId] || 0) + 1;
+          var el = domId ? document.getElementById(domId) : null;
+          if (el) el.classList.add('pressed');
+
+          setTimeout(function() {
+            mcpHoldCount[btnId]--;
+            if (mcpHoldCount[btnId] <= 0) {
+              delete mcpHoldCount[btnId];
+              if (!userHeldButtons[btnId]) {
+                snes.setPad1ButtonReleased(btnId);
+                if (el) el.classList.remove('pressed');
+              }
+            }
+          }, msg.durationFrames * (1000 / 60));
+        }
+
+        if (msg.type === 'rom_loaded') {
+          loadROM();
+        }
+      };
+      ws.onclose = function() { syncWs = null; setTimeout(connectWs, 2000); };
+      ws.onerror = function() { ws.close(); };
+    }
+    connectWs();
 
     // ─── Start ───────────────────────────────────────────────
     loadROM();

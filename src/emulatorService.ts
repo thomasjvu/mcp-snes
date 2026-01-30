@@ -4,13 +4,19 @@ import { ImageContent } from '@modelcontextprotocol/sdk/types.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { log } from './utils/logger';
+import type { WsSync } from './wsSync';
 
 export class EmulatorService {
   private emulator: SNESEmulator;
+  private wsSync?: WsSync;
 
   constructor(emulator: SNESEmulator) {
     this.emulator = emulator;
     log.info('EmulatorService initialized');
+  }
+
+  setWsSync(wsSync: WsSync): void {
+    this.wsSync = wsSync;
   }
 
   isRomLoaded(): boolean {
@@ -37,6 +43,7 @@ export class EmulatorService {
         this.emulator.doFrame();
       }
       log.verbose('Advanced initial frames after ROM load');
+      this.wsSync?.broadcastRomLoaded();
 
       return this.getScreen();
     } catch (error) {
@@ -52,7 +59,14 @@ export class EmulatorService {
       throw new Error('No ROM loaded');
     }
     this.emulator.pressButton(button, durationFrames);
+    this.wsSync?.broadcastButtonPress(button, durationFrames);
     return this.getScreen();
+  }
+
+  /** Press button on server emulator only, no broadcast (for browser-originated inputs) */
+  pressButtonLocal(button: SNESButton, durationFrames: number): void {
+    if (!this.isRomLoaded()) return;
+    this.emulator.pressButton(button, durationFrames);
   }
 
   waitFrames(durationFrames: number): ImageContent {

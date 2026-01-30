@@ -8,6 +8,7 @@ import fs from 'fs';
 import http from 'http';
 import multer from 'multer';
 import { setupWebUI, setupRomSelectionUI } from '../ui';
+import { WsSync } from '../wsSync';
 import { log } from '../utils/logger';
 
 export async function startSseServer(port?: number): Promise<void> {
@@ -123,6 +124,9 @@ export async function startSseServer(port?: number): Promise<void> {
 
   // Start the Express server
   const httpServer = http.createServer(app);
+  const wsSync = new WsSync(httpServer);
+  wsSync.setEmulatorService(emulatorService);
+  emulatorService.setWsSync(wsSync);
   httpServer.listen(ssePort, () => {
     log.info(`SNES MCP Server listening on http://localhost:${ssePort}`);
     log.info(`SNES Web UI available at http://localhost:${ssePort}/emulator`);
