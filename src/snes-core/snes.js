@@ -123,6 +123,92 @@ function Snes() {
   }
   this.reset();
 
+  this.saveState = function() {
+    return {
+      version: 1,
+      ram: Array.from(this.ram),
+      xPos: this.xPos, yPos: this.yPos, frames: this.frames,
+      cpuCyclesLeft: this.cpuCyclesLeft, cpuMemOps: this.cpuMemOps,
+      apuCatchCycles: this.apuCatchCycles, ramAdr: this.ramAdr,
+      hIrqEnabled: this.hIrqEnabled, vIrqEnabled: this.vIrqEnabled,
+      nmiEnabled: this.nmiEnabled, hTimer: this.hTimer, vTimer: this.vTimer,
+      inNmi: this.inNmi, inIrq: this.inIrq,
+      inHblank: this.inHblank, inVblank: this.inVblank,
+      autoJoyRead: this.autoJoyRead, autoJoyTimer: this.autoJoyTimer,
+      ppuLatch: this.ppuLatch,
+      joypad1Val: this.joypad1Val, joypad2Val: this.joypad2Val,
+      joypad1AutoRead: this.joypad1AutoRead, joypad2AutoRead: this.joypad2AutoRead,
+      joypadStrobe: this.joypadStrobe,
+      joypad1State: this.joypad1State, joypad2State: this.joypad2State,
+      multiplyA: this.multiplyA, divA: this.divA,
+      divResult: this.divResult, mulResult: this.mulResult,
+      fastMem: this.fastMem, openBus: this.openBus,
+      dmaTimer: this.dmaTimer, hdmaTimer: this.hdmaTimer,
+      dmaBusy: this.dmaBusy,
+      dmaActive: this.dmaActive.slice(), hdmaActive: this.hdmaActive.slice(),
+      dmaMode: this.dmaMode.slice(), dmaFixed: this.dmaFixed.slice(),
+      dmaDec: this.dmaDec.slice(), hdmaInd: this.hdmaInd.slice(),
+      dmaFromB: this.dmaFromB.slice(), dmaUnusedBit: this.dmaUnusedBit.slice(),
+      hdmaDoTransfer: this.hdmaDoTransfer.slice(),
+      hdmaTerminated: this.hdmaTerminated.slice(),
+      dmaOffIndex: this.dmaOffIndex,
+      dmaBadr: Array.from(this.dmaBadr), dmaAadr: Array.from(this.dmaAadr),
+      dmaAadrBank: Array.from(this.dmaAadrBank), dmaSize: Array.from(this.dmaSize),
+      hdmaIndBank: Array.from(this.hdmaIndBank),
+      hdmaTableAdr: Array.from(this.hdmaTableAdr),
+      hdmaRepCount: Array.from(this.hdmaRepCount),
+      dmaUnusedByte: Array.from(this.dmaUnusedByte),
+      cpu: this.cpu.getState(),
+      ppu: this.ppu.getState(),
+      apu: this.apu.getState(),
+      cart: this.cart.getState()
+    };
+  }
+
+  this.loadState = function(state) {
+    var i;
+    for(i = 0; i < state.ram.length; i++) this.ram[i] = state.ram[i];
+    this.xPos = state.xPos; this.yPos = state.yPos; this.frames = state.frames;
+    this.cpuCyclesLeft = state.cpuCyclesLeft; this.cpuMemOps = state.cpuMemOps;
+    this.apuCatchCycles = state.apuCatchCycles; this.ramAdr = state.ramAdr;
+    this.hIrqEnabled = state.hIrqEnabled; this.vIrqEnabled = state.vIrqEnabled;
+    this.nmiEnabled = state.nmiEnabled; this.hTimer = state.hTimer;
+    this.vTimer = state.vTimer;
+    this.inNmi = state.inNmi; this.inIrq = state.inIrq;
+    this.inHblank = state.inHblank; this.inVblank = state.inVblank;
+    this.autoJoyRead = state.autoJoyRead; this.autoJoyTimer = state.autoJoyTimer;
+    this.ppuLatch = state.ppuLatch;
+    this.joypad1Val = state.joypad1Val; this.joypad2Val = state.joypad2Val;
+    this.joypad1AutoRead = state.joypad1AutoRead;
+    this.joypad2AutoRead = state.joypad2AutoRead;
+    this.joypadStrobe = state.joypadStrobe;
+    this.joypad1State = state.joypad1State; this.joypad2State = state.joypad2State;
+    this.multiplyA = state.multiplyA; this.divA = state.divA;
+    this.divResult = state.divResult; this.mulResult = state.mulResult;
+    this.fastMem = state.fastMem; this.openBus = state.openBus;
+    this.dmaTimer = state.dmaTimer; this.hdmaTimer = state.hdmaTimer;
+    this.dmaBusy = state.dmaBusy;
+    this.dmaActive = state.dmaActive; this.hdmaActive = state.hdmaActive;
+    this.dmaMode = state.dmaMode; this.dmaFixed = state.dmaFixed;
+    this.dmaDec = state.dmaDec; this.hdmaInd = state.hdmaInd;
+    this.dmaFromB = state.dmaFromB; this.dmaUnusedBit = state.dmaUnusedBit;
+    this.hdmaDoTransfer = state.hdmaDoTransfer;
+    this.hdmaTerminated = state.hdmaTerminated;
+    this.dmaOffIndex = state.dmaOffIndex;
+    for(i = 0; i < state.dmaBadr.length; i++) this.dmaBadr[i] = state.dmaBadr[i];
+    for(i = 0; i < state.dmaAadr.length; i++) this.dmaAadr[i] = state.dmaAadr[i];
+    for(i = 0; i < state.dmaAadrBank.length; i++) this.dmaAadrBank[i] = state.dmaAadrBank[i];
+    for(i = 0; i < state.dmaSize.length; i++) this.dmaSize[i] = state.dmaSize[i];
+    for(i = 0; i < state.hdmaIndBank.length; i++) this.hdmaIndBank[i] = state.hdmaIndBank[i];
+    for(i = 0; i < state.hdmaTableAdr.length; i++) this.hdmaTableAdr[i] = state.hdmaTableAdr[i];
+    for(i = 0; i < state.hdmaRepCount.length; i++) this.hdmaRepCount[i] = state.hdmaRepCount[i];
+    for(i = 0; i < state.dmaUnusedByte.length; i++) this.dmaUnusedByte[i] = state.dmaUnusedByte[i];
+    this.cpu.setState(state.cpu);
+    this.ppu.setState(state.ppu);
+    this.apu.setState(state.apu);
+    this.cart.setState(state.cart);
+  }
+
   // cycle functions
 
   this.cycle = function(noPpu) {

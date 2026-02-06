@@ -108,6 +108,67 @@ function Dsp(apu) {
   }
   this.reset();
 
+  this.getState = function() {
+    return {
+      ram: Array.from(this.ram),
+      decodeBuffer: Array.from(this.decodeBuffer),
+      rateNums: Array.from(this.rateNums),
+      pitch: this.pitch.slice(), counter: this.counter.slice(),
+      pitchMod: this.pitchMod.slice(),
+      srcn: this.srcn.slice(), decodeOffset: this.decodeOffset.slice(),
+      prevFlags: this.prevFlags.slice(),
+      old: this.old.slice(), older: this.older.slice(),
+      enableNoise: this.enableNoise.slice(),
+      noiseSample: this.noiseSample, noiseRate: this.noiseRate,
+      noiseCounter: this.noiseCounter,
+      rateCounter: this.rateCounter.slice(),
+      adsrState: this.adsrState.slice(),
+      sustainLevel: this.sustainLevel.slice(),
+      useGain: this.useGain.slice(),
+      gainMode: this.gainMode.slice(),
+      directGain: this.directGain.slice(),
+      gainValue: this.gainValue.slice(),
+      gain: this.gain.slice(),
+      channelVolumeL: this.channelVolumeL.slice(),
+      channelVolumeR: this.channelVolumeR.slice(),
+      volumeL: this.volumeL, volumeR: this.volumeR,
+      mute: this.mute, resetFlag: this.resetFlag,
+      noteOff: this.noteOff.slice(),
+      sampleOut: this.sampleOut.slice(),
+      dirPage: this.dirPage
+    };
+  }
+
+  this.setState = function(s) {
+    var i;
+    for(i = 0; i < s.ram.length; i++) this.ram[i] = s.ram[i];
+    for(i = 0; i < s.decodeBuffer.length; i++) this.decodeBuffer[i] = s.decodeBuffer[i];
+    for(i = 0; i < s.rateNums.length; i++) this.rateNums[i] = s.rateNums[i];
+    this.pitch = s.pitch; this.counter = s.counter;
+    this.pitchMod = s.pitchMod;
+    this.srcn = s.srcn; this.decodeOffset = s.decodeOffset;
+    this.prevFlags = s.prevFlags;
+    this.old = s.old; this.older = s.older;
+    this.enableNoise = s.enableNoise;
+    this.noiseSample = s.noiseSample; this.noiseRate = s.noiseRate;
+    this.noiseCounter = s.noiseCounter;
+    this.rateCounter = s.rateCounter;
+    this.adsrState = s.adsrState;
+    this.sustainLevel = s.sustainLevel;
+    this.useGain = s.useGain;
+    this.gainMode = s.gainMode;
+    this.directGain = s.directGain;
+    this.gainValue = s.gainValue;
+    this.gain = s.gain;
+    this.channelVolumeL = s.channelVolumeL;
+    this.channelVolumeR = s.channelVolumeR;
+    this.volumeL = s.volumeL; this.volumeR = s.volumeR;
+    this.mute = s.mute; this.resetFlag = s.resetFlag;
+    this.noteOff = s.noteOff;
+    this.sampleOut = s.sampleOut;
+    this.dirPage = s.dirPage;
+  }
+
   // TODO: echo
 
   this.cycle = function() {

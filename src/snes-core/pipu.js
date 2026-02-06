@@ -212,6 +212,135 @@ function Ppu(snes) {
   }
   this.reset();
 
+  this.getState = function() {
+    return {
+      vram: Array.from(this.vram),
+      cgram: Array.from(this.cgram),
+      oam: Array.from(this.oam),
+      highOam: Array.from(this.highOam),
+      cgramAdr: this.cgramAdr, cgramSecond: this.cgramSecond,
+      cgramBuffer: this.cgramBuffer,
+      vramInc: this.vramInc, vramRemap: this.vramRemap,
+      vramIncOnHigh: this.vramIncOnHigh,
+      vramAdr: this.vramAdr, vramReadBuffer: this.vramReadBuffer,
+      tilemapWider: this.tilemapWider.slice(),
+      tilemapHigher: this.tilemapHigher.slice(),
+      tilemapAdr: this.tilemapAdr.slice(),
+      tileAdr: this.tileAdr.slice(),
+      bgHoff: this.bgHoff.slice(), bgVoff: this.bgVoff.slice(),
+      offPrev1: this.offPrev1, offPrev2: this.offPrev2,
+      mode: this.mode, layer3Prio: this.layer3Prio,
+      bigTiles: this.bigTiles.slice(),
+      mosaicEnabled: this.mosaicEnabled.slice(),
+      mosaicSize: this.mosaicSize, mosaicStartLine: this.mosaicStartLine,
+      mainScreenEnabled: this.mainScreenEnabled.slice(),
+      subScreenEnabled: this.subScreenEnabled.slice(),
+      forcedBlank: this.forcedBlank, brightness: this.brightness,
+      oamAdr: this.oamAdr, oamRegAdr: this.oamRegAdr,
+      oamInHigh: this.oamInHigh, oamRegInHigh: this.oamRegInHigh,
+      objPriority: this.objPriority,
+      oamSecond: this.oamSecond, oamBuffer: this.oamBuffer,
+      sprAdr1: this.sprAdr1, sprAdr2: this.sprAdr2, objSize: this.objSize,
+      rangeOver: this.rangeOver, timeOver: this.timeOver,
+      mode7ExBg: this.mode7ExBg, pseudoHires: this.pseudoHires,
+      overscan: this.overscan, objInterlace: this.objInterlace,
+      interlace: this.interlace,
+      frameOverscan: this.frameOverscan, frameInterlace: this.frameInterlace,
+      evenFrame: this.evenFrame,
+      latchedHpos: this.latchedHpos, latchedVpos: this.latchedVpos,
+      latchHsecond: this.latchHsecond, latchVsecond: this.latchVsecond,
+      countersLatched: this.countersLatched,
+      mode7Hoff: this.mode7Hoff, mode7Voff: this.mode7Voff,
+      mode7A: this.mode7A, mode7B: this.mode7B,
+      mode7C: this.mode7C, mode7D: this.mode7D,
+      mode7X: this.mode7X, mode7Y: this.mode7Y,
+      mode7Prev: this.mode7Prev, multResult: this.multResult,
+      mode7LargeField: this.mode7LargeField,
+      mode7Char0fill: this.mode7Char0fill,
+      mode7FlipX: this.mode7FlipX, mode7FlipY: this.mode7FlipY,
+      window1Inversed: this.window1Inversed.slice(),
+      window1Enabled: this.window1Enabled.slice(),
+      window2Inversed: this.window2Inversed.slice(),
+      window2Enabled: this.window2Enabled.slice(),
+      windowMaskLogic: this.windowMaskLogic.slice(),
+      window1Left: this.window1Left, window1Right: this.window1Right,
+      window2Left: this.window2Left, window2Right: this.window2Right,
+      mainScreenWindow: this.mainScreenWindow.slice(),
+      subScreenWindow: this.subScreenWindow.slice(),
+      colorClip: this.colorClip, preventMath: this.preventMath,
+      addSub: this.addSub, directColor: this.directColor,
+      subtractColors: this.subtractColors, halfColors: this.halfColors,
+      mathEnabled: this.mathEnabled.slice(),
+      fixedColorB: this.fixedColorB,
+      fixedColorG: this.fixedColorG,
+      fixedColorR: this.fixedColorR
+    };
+  }
+
+  this.setState = function(s) {
+    var i;
+    for(i = 0; i < s.vram.length; i++) this.vram[i] = s.vram[i];
+    for(i = 0; i < s.cgram.length; i++) this.cgram[i] = s.cgram[i];
+    for(i = 0; i < s.oam.length; i++) this.oam[i] = s.oam[i];
+    for(i = 0; i < s.highOam.length; i++) this.highOam[i] = s.highOam[i];
+    this.cgramAdr = s.cgramAdr; this.cgramSecond = s.cgramSecond;
+    this.cgramBuffer = s.cgramBuffer;
+    this.vramInc = s.vramInc; this.vramRemap = s.vramRemap;
+    this.vramIncOnHigh = s.vramIncOnHigh;
+    this.vramAdr = s.vramAdr; this.vramReadBuffer = s.vramReadBuffer;
+    this.tilemapWider = s.tilemapWider;
+    this.tilemapHigher = s.tilemapHigher;
+    this.tilemapAdr = s.tilemapAdr;
+    this.tileAdr = s.tileAdr;
+    this.bgHoff = s.bgHoff; this.bgVoff = s.bgVoff;
+    this.offPrev1 = s.offPrev1; this.offPrev2 = s.offPrev2;
+    this.mode = s.mode; this.layer3Prio = s.layer3Prio;
+    this.bigTiles = s.bigTiles;
+    this.mosaicEnabled = s.mosaicEnabled;
+    this.mosaicSize = s.mosaicSize; this.mosaicStartLine = s.mosaicStartLine;
+    this.mainScreenEnabled = s.mainScreenEnabled;
+    this.subScreenEnabled = s.subScreenEnabled;
+    this.forcedBlank = s.forcedBlank; this.brightness = s.brightness;
+    this.oamAdr = s.oamAdr; this.oamRegAdr = s.oamRegAdr;
+    this.oamInHigh = s.oamInHigh; this.oamRegInHigh = s.oamRegInHigh;
+    this.objPriority = s.objPriority;
+    this.oamSecond = s.oamSecond; this.oamBuffer = s.oamBuffer;
+    this.sprAdr1 = s.sprAdr1; this.sprAdr2 = s.sprAdr2; this.objSize = s.objSize;
+    this.rangeOver = s.rangeOver; this.timeOver = s.timeOver;
+    this.mode7ExBg = s.mode7ExBg; this.pseudoHires = s.pseudoHires;
+    this.overscan = s.overscan; this.objInterlace = s.objInterlace;
+    this.interlace = s.interlace;
+    this.frameOverscan = s.frameOverscan; this.frameInterlace = s.frameInterlace;
+    this.evenFrame = s.evenFrame;
+    this.latchedHpos = s.latchedHpos; this.latchedVpos = s.latchedVpos;
+    this.latchHsecond = s.latchHsecond; this.latchVsecond = s.latchVsecond;
+    this.countersLatched = s.countersLatched;
+    this.mode7Hoff = s.mode7Hoff; this.mode7Voff = s.mode7Voff;
+    this.mode7A = s.mode7A; this.mode7B = s.mode7B;
+    this.mode7C = s.mode7C; this.mode7D = s.mode7D;
+    this.mode7X = s.mode7X; this.mode7Y = s.mode7Y;
+    this.mode7Prev = s.mode7Prev; this.multResult = s.multResult;
+    this.mode7LargeField = s.mode7LargeField;
+    this.mode7Char0fill = s.mode7Char0fill;
+    this.mode7FlipX = s.mode7FlipX; this.mode7FlipY = s.mode7FlipY;
+    this.window1Inversed = s.window1Inversed;
+    this.window1Enabled = s.window1Enabled;
+    this.window2Inversed = s.window2Inversed;
+    this.window2Enabled = s.window2Enabled;
+    this.windowMaskLogic = s.windowMaskLogic;
+    this.window1Left = s.window1Left; this.window1Right = s.window1Right;
+    this.window2Left = s.window2Left; this.window2Right = s.window2Right;
+    this.mainScreenWindow = s.mainScreenWindow;
+    this.subScreenWindow = s.subScreenWindow;
+    this.colorClip = s.colorClip; this.preventMath = s.preventMath;
+    this.addSub = s.addSub; this.directColor = s.directColor;
+    this.subtractColors = s.subtractColors; this.halfColors = s.halfColors;
+    this.mathEnabled = s.mathEnabled;
+    this.fixedColorB = s.fixedColorB;
+    this.fixedColorG = s.fixedColorG;
+    this.fixedColorR = s.fixedColorR;
+  }
+
   // TODO: better mode 2/4/6 offset-per-tile (especially mode 6), color math
   // when subscreen is visible (especially how to handle the subscreen pixels),
   // mosaic with hires/interlace, mosaic on mode 7, rectangular sprites,

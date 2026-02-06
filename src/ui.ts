@@ -94,7 +94,12 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
       margin: 0;
       padding: 16px 0 24px;
       zoom: 0.8;
-      background: linear-gradient(180deg, #1a1520 0%, #0d0a12 50%, #1a1520 100%);
+      background-color: #121014;
+      background-image:
+        linear-gradient(45deg, #1a1720 25%, transparent 25%, transparent 75%, #1a1720 75%),
+        linear-gradient(45deg, #1a1720 25%, transparent 25%, transparent 75%, #1a1720 75%);
+      background-size: 40px 40px;
+      background-position: 0 0, 20px 20px;
       font-family: 'Press Start 2P', monospace;
       color: #eee;
       overflow-x: hidden;
@@ -276,10 +281,11 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
     }
 
     .sc-center {
-      width: 950px;
+      width: 1120px;
       height: 550px;
       background-color: var(--ctrl-primary);
       position: relative;
+      border-radius: 150px;
     }
 
     .sc-side {
@@ -422,12 +428,12 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
     .sc-center > .sc-sel-start {
       z-index: 1;
       position: absolute;
-      left: 315px;
+      left: 410px;
       bottom: 230px;
       cursor: pointer;
     }
     .sc-center > .sc-sel-start.sc-start-btn {
-      left: 475px;
+      left: 570px;
     }
     .sc-center > .sc-sel-start:before {
       content: "";
@@ -462,14 +468,14 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
     /* LOGO */
     .sc-logo {
       position: absolute;
-      left: 85px;
+      left: 235px;
       top: 50px;
       width: 470px;
       height: 100px;
       z-index: 1;
     }
     .controller-jpeu .sc-logo {
-      left: 175px;
+      left: 280px;
     }
     .sc-illustration {
       width: 40px;
@@ -537,32 +543,16 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
       box-sizing: border-box;
     }
 
-    /* SHOULDER BUTTONS (L/R) — aligned over wing centers */
-    .shoulder-row {
-      display: flex; justify-content: space-between;
-      width: 677px; padding: 0 84px;
-      position: absolute; top: 0; z-index: 2;
-      box-sizing: border-box;
-      pointer-events: none;
+    /* MCP (LLM) button press — reddish highlight */
+    .sc-face-btn.mcp-pressed {
+      box-shadow: 0 0 12px 4px rgba(220,60,60,0.6), inset 0 0 8px 2px rgba(220,60,60,0.4);
     }
-
-    .shoulder-btn {
-      width: 105px; height: 10px; border: none; cursor: pointer;
-      font-size: 0; color: transparent;
-      background: transparent;
-      opacity: 0;
-      pointer-events: auto;
+    .sc-dpad-btn.mcp-pressed {
+      background: rgba(220,60,60,0.3);
     }
-    .shoulder-btn:active, .shoulder-btn.pressed {
-      opacity: 0;
+    .sc-center > .sc-sel-start.mcp-pressed:before {
+      background-color: #b84040;
     }
-
-    /* BACK LINK */
-    .back-link {
-      margin-top: 20px; margin-bottom: 10px; font-size: 7px; color: #666;
-      text-decoration: none; letter-spacing: 2px; transition: color 0.2s;
-    }
-    .back-link:hover { color: #aaa; }
 
     /* WIRES */
     .wire { width: 3px; height: 20px; background: #333; margin: 0 auto; border-radius: 2px; flex-shrink: 0; }
@@ -646,16 +636,22 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
     <div class="setting-group">
       <button class="setting-btn active" id="btn-region">USA</button>
     </div>
+    <div class="setting-divider"></div>
+    <div class="setting-group">
+      <button class="setting-btn" id="btn-save">SAVE 1</button>
+      <button class="setting-btn" id="btn-load">LOAD 1</button>
+    </div>
+    <div class="setting-divider"></div>
+    <div class="setting-group">
+      <button class="setting-btn" id="btn-rom-select" onclick="window.location.href='/'">ROM SELECT</button>
+    </div>
   </div>
+  <div id="toast" style="position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#0f0;padding:10px 24px;border-radius:6px;font-family:monospace;font-size:14px;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;"></div>
 
   <div class="wire-grow"><div class="wire-line"></div></div>
 
   <!-- SNES Controller -->
   <div class="snes-controller">
-    <div class="shoulder-row">
-      <button class="shoulder-btn shoulder-l" id="btn-l"></button>
-      <button class="shoulder-btn shoulder-r" id="btn-r"></button>
-    </div>
     <div class="sc-body">
       <div class="sc-center">
         <div class="sc-sel-start sc-select-btn" id="btn-select"></div>
@@ -687,8 +683,6 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
       </div>
     </div>
   </div>
-
-  <a class="back-link" href="/">&laquo; ROM SELECT</a>
 
   <script>
     // ─── SNES Button IDs ──────────────────────────────────────
@@ -786,7 +780,7 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
     var running = false;
     var paused = false;
 
-    async function loadROM() {
+    async function loadROM(initialFrames) {
       statusOverlay.textContent = 'LOADING ROM...';
       statusOverlay.classList.remove('hidden');
       try {
@@ -801,6 +795,12 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
 
         // Set up audio output
         snes.setSamples(samplesL, samplesR, SAMPLES_PER_FRAME);
+
+        // Advance initial frames to match server state after ROM load
+        var skip = initialFrames || 0;
+        for (var i = 0; i < skip; i++) {
+          snes.runFrame();
+        }
 
         running = true;
         paused = false;
@@ -819,12 +819,20 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
     // ─── Game Loop (60fps) ───────────────────────────────────
     var lastTime = 0;
     var FRAME_MS = 1000 / 60;
+    var mcpSkipFrames = 0; // frames to skip in game loop (already advanced by MCP sync)
 
     function gameLoop(ts) {
       requestAnimationFrame(gameLoop);
       if (!running || paused) return;
       if (ts - lastTime < FRAME_MS * 0.9) return;
       lastTime = ts - ((ts - lastTime) % FRAME_MS);
+
+      // If MCP tools already advanced the emulator, skip this game loop frame
+      if (mcpSkipFrames > 0) {
+        mcpSkipFrames--;
+        return;
+      }
+
       for (var s = 0; s < speedMultiplier; s++) {
         snes.runFrame();
         snes.setSamples(samplesL, samplesR, SAMPLES_PER_FRAME);
@@ -940,6 +948,7 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
     btnMapping.forEach(function(pair) {
       var el = document.getElementById(pair[0]);
       var snesBtn = pair[1];
+      if (!el) return;
       el.addEventListener('pointerdown', function(e) {
         e.preventDefault();
         resumeAudio();
@@ -1011,6 +1020,53 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
     speedBtn.addEventListener('click', function() { cycleSpeed(); });
     regionBtn.addEventListener('click', function() { toggleRegion(); });
 
+    // Save/Load state
+    var saveSlots = {};
+    var currentSlot = 1;
+    var saveBtn = document.getElementById('btn-save');
+    var loadBtn = document.getElementById('btn-load');
+    var toastEl = document.getElementById('toast');
+    var toastTimer = null;
+
+    function showToast(msg) {
+      toastEl.textContent = msg;
+      toastEl.style.opacity = '1';
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(function() { toastEl.style.opacity = '0'; }, 1500);
+    }
+
+    function cycleSlot() {
+      currentSlot = currentSlot >= 3 ? 1 : currentSlot + 1;
+      saveBtn.textContent = 'SAVE ' + currentSlot;
+      loadBtn.textContent = 'LOAD ' + currentSlot;
+    }
+
+    saveBtn.addEventListener('click', function() {
+      if (!running) return;
+      saveSlots[currentSlot] = snes.saveState();
+      showToast('State saved to slot ' + currentSlot);
+    });
+
+    saveBtn.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+      cycleSlot();
+    });
+
+    loadBtn.addEventListener('click', function() {
+      if (!running) return;
+      if (!saveSlots[currentSlot]) {
+        showToast('No save in slot ' + currentSlot);
+        return;
+      }
+      snes.loadState(saveSlots[currentSlot]);
+      showToast('State loaded from slot ' + currentSlot);
+    });
+
+    loadBtn.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+      cycleSlot();
+    });
+
     // Eject button goes back to ROM select
     document.getElementById('eject-btn').addEventListener('click', function() {
       window.location.href = '/';
@@ -1036,7 +1092,34 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
         var msg;
         try { msg = JSON.parse(ev.data); } catch(e) { return; }
 
-        if (msg.type === 'button_press') {
+        if (msg.type === 'button_press' && msg.source === 'mcp') {
+          var btnId = wsBtnNameToId[msg.button];
+          if (btnId === undefined) return;
+          var domId = wsBtnNameToDom[msg.button];
+          var frames = msg.durationFrames || 25;
+
+          // MCP button press: server already advanced these frames,
+          // so we advance them here and skip in the game loop
+          snes.setPad1ButtonPressed(btnId);
+          for (var i = 0; i < frames; i++) {
+            snes.runFrame();
+          }
+          snes.setPad1ButtonReleased(btnId);
+          mcpSkipFrames += frames;
+
+          // Update canvas
+          snes.setPixels(imageData.data);
+          ctx.putImageData(imageData, 0, 0);
+
+          // Visual feedback on controller
+          var el = domId ? document.getElementById(domId) : null;
+          if (el) { el.classList.add('pressed'); el.classList.add('mcp-pressed'); }
+          setTimeout(function() {
+            if (el) { el.classList.remove('pressed'); el.classList.remove('mcp-pressed'); }
+          }, frames * (1000 / 60));
+        }
+
+        if (msg.type === 'button_press' && msg.source === 'browser') {
           var btnId = wsBtnNameToId[msg.button];
           if (btnId === undefined) return;
           var domId = wsBtnNameToDom[msg.button];
@@ -1044,7 +1127,7 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
           snes.setPad1ButtonPressed(btnId);
           mcpHoldCount[btnId] = (mcpHoldCount[btnId] || 0) + 1;
           var el = domId ? document.getElementById(domId) : null;
-          if (el) el.classList.add('pressed');
+          if (el) { el.classList.add('pressed'); el.classList.add('mcp-pressed'); }
 
           setTimeout(function() {
             mcpHoldCount[btnId]--;
@@ -1052,14 +1135,36 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
               delete mcpHoldCount[btnId];
               if (!userHeldButtons[btnId]) {
                 snes.setPad1ButtonReleased(btnId);
-                if (el) el.classList.remove('pressed');
+                if (el) { el.classList.remove('pressed'); el.classList.remove('mcp-pressed'); }
+              } else {
+                if (el) el.classList.remove('mcp-pressed');
               }
             }
           }, msg.durationFrames * (1000 / 60));
         }
 
+        if (msg.type === 'wait_frames') {
+          // Fast-forward browser emulator to match server
+          var n = msg.durationFrames || 0;
+          for (var i = 0; i < n; i++) {
+            snes.runFrame();
+          }
+          // Skip equivalent game loop frames to avoid double-advancing
+          mcpSkipFrames += n;
+          // Update canvas to show current state
+          snes.setPixels(imageData.data);
+          ctx.putImageData(imageData, 0, 0);
+        }
+
+        if (msg.type === 'advance_frame') {
+          snes.runFrame();
+          mcpSkipFrames++;
+          snes.setPixels(imageData.data);
+          ctx.putImageData(imageData, 0, 0);
+        }
+
         if (msg.type === 'rom_loaded') {
-          loadROM();
+          loadROM(msg.initialFrames || 0);
         }
       };
       ws.onclose = function() { syncWs = null; setTimeout(connectWs, 2000); };
@@ -1068,7 +1173,7 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
     connectWs();
 
     // ─── Start ───────────────────────────────────────────────
-    loadROM();
+    loadROM(0);
   </script>
 </body>
 </html>`);
@@ -1263,7 +1368,12 @@ export function setupRomSelectionUI(app: express.Application, emulatorService: E
     body {
       display: flex; flex-direction: column; align-items: center;
       min-height: 100vh; margin: 0;
-      background: linear-gradient(180deg, #1a1520 0%, #0d0a12 50%, #1a1520 100%);
+      background-color: #121014;
+      background-image:
+        linear-gradient(45deg, #1a1720 25%, transparent 25%, transparent 75%, #1a1720 75%),
+        linear-gradient(45deg, #1a1720 25%, transparent 25%, transparent 75%, #1a1720 75%);
+      background-size: 40px 40px;
+      background-position: 0 0, 20px 20px;
       font-family: 'Press Start 2P', monospace; color: #eee; padding: 40px 20px;
     }
 

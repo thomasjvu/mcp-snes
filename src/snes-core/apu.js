@@ -50,6 +50,47 @@ function Apu(snes) {
   }
   this.reset();
 
+  this.getState = function() {
+    return {
+      ram: Array.from(this.ram),
+      spcWritePorts: Array.from(this.spcWritePorts),
+      spcReadPorts: Array.from(this.spcReadPorts),
+      dspAdr: this.dspAdr, dspRomReadable: this.dspRomReadable,
+      cycles: this.cycles,
+      timer1int: this.timer1int, timer1div: this.timer1div,
+      timer1target: this.timer1target, timer1counter: this.timer1counter,
+      timer1enabled: this.timer1enabled,
+      timer2int: this.timer2int, timer2div: this.timer2div,
+      timer2target: this.timer2target, timer2counter: this.timer2counter,
+      timer2enabled: this.timer2enabled,
+      timer3int: this.timer3int, timer3div: this.timer3div,
+      timer3target: this.timer3target, timer3counter: this.timer3counter,
+      timer3enabled: this.timer3enabled,
+      spc: this.spc.getState(),
+      dsp: this.dsp.getState()
+    };
+  }
+
+  this.setState = function(s) {
+    var i;
+    for(i = 0; i < s.ram.length; i++) this.ram[i] = s.ram[i];
+    for(i = 0; i < s.spcWritePorts.length; i++) this.spcWritePorts[i] = s.spcWritePorts[i];
+    for(i = 0; i < s.spcReadPorts.length; i++) this.spcReadPorts[i] = s.spcReadPorts[i];
+    this.dspAdr = s.dspAdr; this.dspRomReadable = s.dspRomReadable;
+    this.cycles = s.cycles;
+    this.timer1int = s.timer1int; this.timer1div = s.timer1div;
+    this.timer1target = s.timer1target; this.timer1counter = s.timer1counter;
+    this.timer1enabled = s.timer1enabled;
+    this.timer2int = s.timer2int; this.timer2div = s.timer2div;
+    this.timer2target = s.timer2target; this.timer2counter = s.timer2counter;
+    this.timer2enabled = s.timer2enabled;
+    this.timer3int = s.timer3int; this.timer3div = s.timer3div;
+    this.timer3target = s.timer3target; this.timer3counter = s.timer3counter;
+    this.timer3enabled = s.timer3enabled;
+    this.spc.setState(s.spc);
+    this.dsp.setState(s.dsp);
+  }
+
   this.cycle = function() {
     this.spc.cycle();
 

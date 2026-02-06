@@ -212,4 +212,26 @@ export class SNESEmulator {
   public isRomLoaded(): boolean {
     return this.romLoaded;
   }
+
+  /**
+   * Save the full emulator state
+   * @returns JSON-serializable state object
+   */
+  public saveState(): object {
+    if (!this.romLoaded) {
+      throw new Error('No ROM loaded');
+    }
+    return this.snes.saveState();
+  }
+
+  /**
+   * Load a previously saved emulator state
+   * @param state State object from saveState()
+   */
+  public loadState(state: object): void {
+    if (!this.romLoaded) {
+      throw new Error('No ROM loaded');
+    }
+    this.snes.loadState(state);
+  }
 }

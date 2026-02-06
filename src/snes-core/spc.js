@@ -104,6 +104,24 @@ Spc = (function() {
     }
     this.reset();
 
+    this.getState = function() {
+      return {
+        r: Array.from(this.r),
+        br: Array.from(this.br),
+        n: this.n, v: this.v, p: this.p, b: this.b,
+        h: this.h, i: this.i, z: this.z, c: this.c,
+        cyclesLeft: this.cyclesLeft
+      };
+    }
+
+    this.setState = function(s) {
+      for(var j = 0; j < s.r.length; j++) this.r[j] = s.r[j];
+      for(var j = 0; j < s.br.length; j++) this.br[j] = s.br[j];
+      this.n = s.n; this.v = s.v; this.p = s.p; this.b = s.b;
+      this.h = s.h; this.i = s.i; this.z = s.z; this.c = s.c;
+      this.cyclesLeft = s.cyclesLeft;
+    }
+
     this.cycle = function() {
       if(this.cyclesLeft === 0) {
         // the spc in the snes does not have interrupts,

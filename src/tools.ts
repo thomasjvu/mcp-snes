@@ -99,6 +99,36 @@ export function registerSNESTools(server: McpServer, emulatorService: EmulatorSe
     }
   );
 
+  // Register save_state tool
+  server.tool(
+    'save_state',
+    'Save the current emulator state to a numbered slot (0-9)',
+    {
+      slot: z.number().int().min(0).max(9).optional().default(0).describe('Save slot number (0-9)')
+    },
+    async ({ slot }): Promise<CallToolResult> => {
+      const result = emulatorService.saveState(slot);
+      return { content: [result] };
+    }
+  );
+
+  // Register load_state tool
+  server.tool(
+    'load_state',
+    'Load a previously saved emulator state from a numbered slot (0-9)',
+    {
+      slot: z.number().int().min(0).max(9).optional().default(0).describe('Save slot number (0-9)'),
+      include_screenshot: z.boolean().optional().default(true).describe('Whether to include a screenshot in the response')
+    },
+    async ({ slot, include_screenshot }): Promise<CallToolResult> => {
+      const screen = emulatorService.loadState(slot);
+      if (include_screenshot) {
+        return { content: [screen] };
+      }
+      return { content: [{ type: 'text', text: JSON.stringify({ loaded: true, slot }) }] };
+    }
+  );
+
   // Register list_roms tool
   server.tool(
     'list_roms',

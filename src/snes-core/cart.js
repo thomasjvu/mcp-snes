@@ -23,6 +23,16 @@ function Cart(data, header, isHirom) {
   }
   this.reset();
 
+  this.getState = function() {
+    return { sram: Array.from(this.sram) };
+  }
+
+  this.setState = function(s) {
+    for(var i = 0; i < s.sram.length; i++) {
+      this.sram[i] = s.sram[i];
+    }
+  }
+
   this.read = function(bank, adr) {
     if(!this.isHirom) {
       if(adr < 0x8000) {

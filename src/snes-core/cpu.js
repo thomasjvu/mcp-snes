@@ -140,6 +140,30 @@ Cpu = (function() {
     }
     this.reset();
 
+    this.getState = function() {
+      return {
+        r: Array.from(this.r),
+        br: Array.from(this.br),
+        n: this.n, v: this.v, m: this.m, x: this.x,
+        d: this.d, i: this.i, z: this.z, c: this.c, e: this.e,
+        irqWanted: this.irqWanted, nmiWanted: this.nmiWanted,
+        aboWanted: this.aboWanted,
+        stopped: this.stopped, waiting: this.waiting,
+        cyclesLeft: this.cyclesLeft
+      };
+    }
+
+    this.setState = function(s) {
+      for(var j = 0; j < s.r.length; j++) this.r[j] = s.r[j];
+      for(var j = 0; j < s.br.length; j++) this.br[j] = s.br[j];
+      this.n = s.n; this.v = s.v; this.m = s.m; this.x = s.x;
+      this.d = s.d; this.i = s.i; this.z = s.z; this.c = s.c; this.e = s.e;
+      this.irqWanted = s.irqWanted; this.nmiWanted = s.nmiWanted;
+      this.aboWanted = s.aboWanted;
+      this.stopped = s.stopped; this.waiting = s.waiting;
+      this.cyclesLeft = s.cyclesLeft;
+    }
+
     this.cycle = function() {
       if(this.cyclesLeft === 0) {
         if(this.stopped) {

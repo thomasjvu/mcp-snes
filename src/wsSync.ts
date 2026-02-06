@@ -64,8 +64,26 @@ export class WsSync {
     }
   }
 
-  broadcastRomLoaded(): void {
-    const msg = JSON.stringify({ type: 'rom_loaded' });
+  broadcastWaitFrames(durationFrames: number): void {
+    const msg = JSON.stringify({ type: 'wait_frames', durationFrames });
+    for (const client of this.wss.clients) {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(msg);
+      }
+    }
+  }
+
+  broadcastAdvanceFrame(): void {
+    const msg = JSON.stringify({ type: 'advance_frame' });
+    for (const client of this.wss.clients) {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(msg);
+      }
+    }
+  }
+
+  broadcastRomLoaded(initialFrames: number = 0): void {
+    const msg = JSON.stringify({ type: 'rom_loaded', initialFrames });
     for (const client of this.wss.clients) {
       if (client.readyState === WebSocket.OPEN) {
         client.send(msg);
