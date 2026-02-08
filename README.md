@@ -4,6 +4,12 @@ An SNES emulator for LLMs via the Model Context Protocol (MCP).
 
 Play SNES games through an MCP-compatible interface — load ROMs, press buttons, advance frames, and see the screen. Includes a browser UI with a nostalgic CRT TV + SNES console design and a full MCP tool API for LLM-driven gameplay.
 
+## Demo
+
+<video src="public/snes-mcp.mov" controls width="100%"></video>
+
+[Download demo video](public/snes-mcp.mov)
+
 ## Features
 
 - SNES emulation with built-in SnesJs core (no external emulator dependency)
@@ -157,7 +163,7 @@ src/
 
 ## Acknowledgements
 
-- SNES emulation core from [SnesJs](https://github.com/angelo-wf/SnesJs) by angelo-wf (MIT license)
+- SNES emulation core inspired by [SnesJs](https://github.com/angelo-wf/SnesJs) by angelo-wf (MIT license)
 - MCP architecture inspired by [mcp-gameboy](https://github.com/mario-andreschak/mcp-gameboy) by Mario Andreschak
 
 ## License
