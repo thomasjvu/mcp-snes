@@ -102,7 +102,10 @@ export async function startStdioServer(): Promise<void> {
   httpServer.listen(port, () => {
     log.info(`SNES Emulator available at http://localhost:${port}/emulator`);
     log.info(`ROM Selection available at http://localhost:${port}/`);
-    open(`http://localhost:${port}/${emulatorService.isRomLoaded() ? 'emulator' : ''}`);
+    // Only auto-open browser if NO_BROWSER env var is not set
+    if (!process.env.NO_BROWSER) {
+      open(`http://localhost:${port}/${emulatorService.isRomLoaded() ? 'emulator' : ''}`);
+    }
   });
 
   // Create the stdio transport

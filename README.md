@@ -23,7 +23,9 @@ npm install
 npm run build
 ```
 
-## Usage with Claude Code
+## Usage with AI Coding Assistants
+
+### Claude Code
 
 The easiest way to use mcp-snes is with Claude Code. From the project directory:
 
@@ -39,6 +41,37 @@ The web UI is available at `http://localhost:3002` while the MCP server is runni
 > **Note:** The MCP server only activates when Claude Code is launched from the project directory. To install globally instead, run:
 > ```bash
 > claude mcp add --scope user mcp-snes -- node /path/to/mcp-snes/dist/index.js --stdio
+> ```
+
+### OpenCode
+
+To use mcp-snes with OpenCode, navigate to the project directory and start OpenCode:
+
+```bash
+cd mcp-snes
+opencode
+```
+
+The project includes an `opencode.json` config that automatically registers the MCP server when OpenCode starts from this directory. OpenCode will be able to load ROMs, press buttons, and see the screen.
+
+The web UI is available at `http://localhost:3003` while the MCP server is running.
+
+> **Note:** The MCP server only activates when OpenCode is launched from the project directory. To install globally instead, add the following to your OpenCode user config (`~/.config/opencode/opencode.json`):
+> ```json
+> {
+>   "$schema": "https://opencode.ai/config.json",
+>   "mcp": {
+>     "mcp-snes": {
+>       "type": "local",
+>       "command": ["node", "/absolute/path/to/mcp-snes/dist/index.js", "--stdio"],
+>       "enabled": true,
+>       "environment": {
+>         "SERVER_PORT": "3003",
+>         "NO_BROWSER": "1"
+>       }
+>     }
+>   }
+> }
 > ```
 
 ### Standalone usage
@@ -73,6 +106,7 @@ npm run debug
 |---|---|---|
 | `SERVER_PORT` | Web server port | `3001` |
 | `ROM_PATH` | Path to auto-load a ROM on startup | — |
+| `NO_BROWSER` | Disable auto-opening browser (useful for MCP mode) | — |
 
 ## MCP Tools
 

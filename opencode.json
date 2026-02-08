@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "mcp-snes": {
+      "type": "local",
+      "command": ["node", "dist/index.js", "--stdio"],
+      "enabled": true,
+      "environment": {
+        "SERVER_PORT": "3003",
+        "NO_BROWSER": "1"
+      }
+    }
+  }
+}
