@@ -6,9 +6,7 @@ Play SNES games through an MCP-compatible interface — load ROMs, press buttons
 
 ## Demo
 
-![Demo](public/snes-mcp-demo.gif)
-
-[Download full demo video](public/snes-mcp.webm)
+[snes-mcp.webm](https://github.com/user-attachments/assets/8ea739d0-a608-4c81-8a80-58a5e1502c01)
 
 ## Features
 
