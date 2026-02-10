@@ -142,7 +142,37 @@ export class SNESEmulator {
   }
 
   /**
-   * Press a button on the SNES controller
+   * Get the button map for external access
+   * @returns Button mapping object
+   */
+  public getButtonMap(): Record<string, number> {
+    return SNES_BUTTON_MAP;
+  }
+
+  /**
+   * Press a button (set it as pressed)
+   * @param buttonNum Button number to press
+   */
+  public setButtonPressed(buttonNum: number): void {
+    if (!this.romLoaded) {
+      throw new Error('No ROM loaded');
+    }
+    this.snes.setPad1ButtonPressed(buttonNum);
+  }
+
+  /**
+   * Release a button (set it as released)
+   * @param buttonNum Button number to release
+   */
+  public setButtonReleased(buttonNum: number): void {
+    if (!this.romLoaded) {
+      throw new Error('No ROM loaded');
+    }
+    this.snes.setPad1ButtonReleased(buttonNum);
+  }
+
+  /**
+   * Press a button on the SNES controller (blocking version)
    * @param button Button to press
    * @param durationFrames Number of frames to hold the button
    */
@@ -179,6 +209,16 @@ export class SNESEmulator {
   }
 
   /**
+   * Advance the emulation by one frame without PPU rendering (faster)
+   */
+  public doFrameFast(): void {
+    if (!this.romLoaded) {
+      throw new Error('No ROM loaded');
+    }
+    this.snes.runFrame(true); // noPpu=true for speed
+  }
+
+  /**
    * Get the current screen as a base64 encoded PNG
    * @returns Base64 encoded PNG image
    */
@@ -211,6 +251,61 @@ export class SNESEmulator {
    */
   public isRomLoaded(): boolean {
     return this.romLoaded;
+  }
+
+  /**
+   * Dump a range of WRAM (Work RAM)
+   * @param startAddress Start address (0x0000 to 0x1FFFF)
+   * @param length Number of bytes to dump
+   * @returns Uint8Array containing the RAM data
+   */
+  public dumpRam(startAddress: number = 0, length: number = 0x20000): Uint8Array {
+    if (!this.romLoaded) {
+      throw new Error('No ROM loaded');
+    }
+    
+    // Clamp to valid range
+    const endAddress = Math.min(startAddress + length, 0x20000);
+    const actualLength = endAddress - startAddress;
+    
+    // Return a copy of the RAM data
+    return new Uint8Array(this.snes.ram.slice(startAddress, endAddress));
+  }
+
+  /**
+   * Read a single byte from WRAM
+   * @param address Address to read (0x0000 to 0x1FFFF)
+   * @returns Byte value at that address
+   */
+  public readRamByte(address: number): number {
+    if (!this.romLoaded) {
+      throw new Error('No ROM loaded');
+    }
+    
+    if (address < 0 || address >= 0x20000) {
+      throw new Error(`Invalid RAM address: ${address.toString(16)}`);
+    }
+    
+    return this.snes.ram[address];
+  }
+
+  /**
+   * Read a 16-bit word from WRAM (little-endian)
+   * @param address Address to read (0x0000 to 0x1FFFF)
+   * @returns 16-bit value at that address
+   */
+  public readRamWord(address: number): number {
+    if (!this.romLoaded) {
+      throw new Error('No ROM loaded');
+    }
+    
+    if (address < 0 || address >= 0x1FFFF) {
+      throw new Error(`Invalid RAM address: ${address.toString(16)}`);
+    }
+    
+    const low = this.snes.ram[address];
+    const high = this.snes.ram[address + 1];
+    return low | (high << 8);
   }
 
   /**

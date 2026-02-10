@@ -21,9 +21,10 @@ export function registerSNESTools(server: McpServer, emulatorService: EmulatorSe
         include_screenshot: z.boolean().optional().default(true).describe('Whether to include a screenshot in the response (default true). Set to false to save context window space when you don\'t need to see the screen.')
       },
       async ({ duration_frames, include_screenshot }): Promise<CallToolResult> => {
-        emulatorService.pressButton(button, duration_frames);
+        // Use async button press to prevent server blocking
+        await emulatorService.pressButtonAsync(button, duration_frames);
         if (include_screenshot) {
-          const screen = emulatorService.getScreen();
+          const screen = emulatorService.advanceFrameAndGetScreen();
           return { content: [screen] };
         }
         return { content: [{ type: 'text', text: JSON.stringify({ button, frames: duration_frames }) }] };
@@ -40,9 +41,10 @@ export function registerSNESTools(server: McpServer, emulatorService: EmulatorSe
       include_screenshot: z.boolean().optional().default(true).describe('Whether to include a screenshot in the response (default true). Set to false to save context window space when you don\'t need to see the screen.')
     },
     async ({ duration_frames, include_screenshot }): Promise<CallToolResult> => {
-      emulatorService.waitFrames(duration_frames);
+      // Use async wait to prevent server blocking
+      await emulatorService.waitFramesAsync(duration_frames);
       if (include_screenshot) {
-        const screen = emulatorService.getScreen();
+        const screen = emulatorService.advanceFrameAndGetScreen();
         return { content: [screen] };
       }
       return { content: [{ type: 'text', text: JSON.stringify({ waited_frames: duration_frames }) }] };
@@ -174,6 +176,31 @@ export function registerSNESTools(server: McpServer, emulatorService: EmulatorSe
 
         return { content: [errorText] };
       }
+    }
+  );
+
+  // Register dump_ram tool
+  server.tool(
+    'dump_ram',
+    'Dump a range of WRAM (Work RAM) for debugging',
+    {
+      start_address: z.number().int().min(0).max(0x1FFFF).optional().default(0).describe('Start address (0x0000 to 0x1FFFF)'),
+      length: z.number().int().min(1).max(4096).optional().default(256).describe('Number of bytes to dump (max 4096)')
+    },
+    async ({ start_address, length }): Promise<CallToolResult> => {
+      const result = emulatorService.dumpRam(start_address, length);
+      return { content: [result] };
+    }
+  );
+
+  // Register check_dialog_state tool
+  server.tool(
+    'check_dialog_state',
+    'Check if a dialog box is currently active (Chrono Trigger specific)',
+    {},
+    async (): Promise<CallToolResult> => {
+      const result = emulatorService.checkDialogState();
+      return { content: [result] };
     }
   );
 }

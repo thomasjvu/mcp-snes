@@ -9,6 +9,7 @@ const VALID_BUTTONS = new Set(Object.values(SNESButton));
 export class WsSync {
   private wss: WebSocketServer;
   private emulatorService?: EmulatorService;
+  private lastBroadcastCommandId: number = 0;
 
   constructor(server: http.Server) {
     this.wss = new WebSocketServer({ server, path: '/ws' });
@@ -55,8 +56,21 @@ export class WsSync {
     }
   }
 
+  /**
+   * Broadcast commands for frame-by-frame consumption by browser
+   */
   broadcastButtonPress(button: string, durationFrames: number): void {
-    const msg = JSON.stringify({ type: 'button_press', button, durationFrames, source: 'mcp' });
+    this.lastBroadcastCommandId++;
+    const msg = JSON.stringify({ 
+      type: 'command_queue', 
+      command: {
+        type: 'button_press',
+        button,
+        durationFrames,
+        id: this.lastBroadcastCommandId
+      },
+      source: 'mcp'
+    });
     for (const client of this.wss.clients) {
       if (client.readyState === WebSocket.OPEN) {
         client.send(msg);
@@ -65,7 +79,16 @@ export class WsSync {
   }
 
   broadcastWaitFrames(durationFrames: number): void {
-    const msg = JSON.stringify({ type: 'wait_frames', durationFrames });
+    this.lastBroadcastCommandId++;
+    const msg = JSON.stringify({ 
+      type: 'command_queue', 
+      command: {
+        type: 'wait_frames',
+        durationFrames,
+        id: this.lastBroadcastCommandId
+      },
+      source: 'mcp'
+    });
     for (const client of this.wss.clients) {
       if (client.readyState === WebSocket.OPEN) {
         client.send(msg);
@@ -74,7 +97,16 @@ export class WsSync {
   }
 
   broadcastAdvanceFrame(): void {
-    const msg = JSON.stringify({ type: 'advance_frame' });
+    this.lastBroadcastCommandId++;
+    const msg = JSON.stringify({ 
+      type: 'command_queue', 
+      command: {
+        type: 'advance_frame',
+        durationFrames: 1,
+        id: this.lastBroadcastCommandId
+      },
+      source: 'mcp'
+    });
     for (const client of this.wss.clients) {
       if (client.readyState === WebSocket.OPEN) {
         client.send(msg);

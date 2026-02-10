@@ -236,6 +236,18 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
     .setting-btn.active { background: var(--snes-purple-btn); color: #fff; border-color: var(--snes-purple-btn); }
     .setting-btn.active:hover { background: #7b4fb0; }
 
+    .slot-selector { display: flex; gap: 2px; }
+    .slot-btn {
+      font-family: 'Press Start 2P', monospace; font-size: 6px;
+      width: 20px; height: 22px; display: flex; align-items: center; justify-content: center;
+      background: #222; color: #666; border: 1px solid #444; border-radius: 2px;
+      cursor: pointer; transition: all 0.12s; padding: 0;
+    }
+    .slot-btn:hover { background: #383838; color: #aaa; }
+    .slot-btn.active { background: var(--snes-purple-btn); color: #fff; border-color: var(--snes-purple-btn); }
+    .slot-btn.has-data { color: #0f0; }
+    .slot-btn.has-data.active { color: #fff; }
+
     .setting-label { font-size: 5px; color: #666; letter-spacing: 1px; }
 
     .setting-divider { width: 1px; height: 18px; background: rgba(255,255,255,0.08); }
@@ -637,9 +649,10 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
       <button class="setting-btn active" id="btn-region">USA</button>
     </div>
     <div class="setting-divider"></div>
-    <div class="setting-group">
-      <button class="setting-btn" id="btn-save">SAVE 1</button>
-      <button class="setting-btn" id="btn-load">LOAD 1</button>
+    <div class="setting-group save-load-group">
+      <button class="setting-btn" id="btn-save">SAVE</button>
+      <div class="slot-selector" id="slot-selector"></div>
+      <button class="setting-btn" id="btn-load">LOAD</button>
     </div>
     <div class="setting-divider"></div>
     <div class="setting-group">
@@ -735,6 +748,12 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
       }
     }
 
+    function runOneFrameWithAudio() {
+      snes.runFrame();
+      snes.setSamples(samplesL, samplesR, SAMPLES_PER_FRAME);
+      pushAudioSamples();
+    }
+
     function resumeAudio() {
       if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     }
@@ -816,10 +835,75 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
       }
     }
 
+    // ─── MCP Command Queue (for smooth playback) ─────────────
+    var mcpCommandQueue = [];
+    var currentMcpCommand = null;
+    var mcpFramesRemaining = 0;
+    var mcpLastCommandId = 0;
+
+    function processMcpQueueFrame() {
+      // If we have frames remaining in current command, consume one
+      if (currentMcpCommand && mcpFramesRemaining > 0) {
+        // Handle button press frames
+        if (currentMcpCommand.type === 'button_press') {
+          // Button already pressed at start of command
+          // Just run the frame
+          runOneFrameWithAudio();
+          mcpFramesRemaining--;
+
+          // Release button on last frame
+          if (mcpFramesRemaining === 0) {
+            var btnId = wsBtnNameToId[currentMcpCommand.button];
+            if (btnId !== undefined) {
+              snes.setPad1ButtonReleased(btnId);
+            }
+          }
+        } else {
+          // wait_frames or advance_frame
+          runOneFrameWithAudio();
+          mcpFramesRemaining--;
+        }
+
+        return true; // We processed a frame from MCP queue
+      }
+
+      // Current command finished, try to get next one
+      if (mcpCommandQueue.length > 0) {
+        currentMcpCommand = mcpCommandQueue.shift();
+        mcpFramesRemaining = currentMcpCommand.durationFrames || 1;
+
+        // Set up button press if needed
+        if (currentMcpCommand.type === 'button_press') {
+          var btnId = wsBtnNameToId[currentMcpCommand.button];
+          if (btnId !== undefined) {
+            snes.setPad1ButtonPressed(btnId);
+          }
+
+          // Visual feedback on controller
+          var domId = wsBtnNameToDom[currentMcpCommand.button];
+          var el = domId ? document.getElementById(domId) : null;
+          if (el) { el.classList.add('pressed'); el.classList.add('mcp-pressed'); }
+          setTimeout(function() {
+            if (el) { el.classList.remove('pressed'); el.classList.remove('mcp-pressed'); }
+          }, mcpFramesRemaining * (1000 / 60));
+        }
+
+        // Process first frame of new command
+        return processMcpQueueFrame();
+      }
+
+      return false; // No MCP command to process
+    }
+
     // ─── Game Loop (60fps) ───────────────────────────────────
     var lastTime = 0;
     var FRAME_MS = 1000 / 60;
-    var mcpSkipFrames = 0; // frames to skip in game loop (already advanced by MCP sync)
+    var mcpSkipFrames = 0; // Legacy: frames to skip (kept for compatibility)
+
+    // Catch-up settings for sync
+    var MAX_CATCHUP_FRAMES = 2; // Keep frame pacing smooth under queued MCP input
+    var NORMAL_SPEED_FRAMES = 1; // Normal frames per tick at 60fps
+    var LOOP_TIME_BUDGET_MS = 10; // Avoid long single-tick bursts that cause audible hiccups
 
     function gameLoop(ts) {
       requestAnimationFrame(gameLoop);
@@ -833,11 +917,30 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
         return;
       }
 
-      for (var s = 0; s < speedMultiplier; s++) {
-        snes.runFrame();
-        snes.setSamples(samplesL, samplesR, SAMPLES_PER_FRAME);
-        pushAudioSamples();
+      // Calculate how many frames to run this tick
+      // Priority: MCP commands first (to stay in sync), then catch-up if needed
+      var framesToRun = NORMAL_SPEED_FRAMES;
+      var queueLength = mcpCommandQueue.length + (currentMcpCommand ? 1 : 0);
+
+      // If we have pending commands, run extra frames to catch up (but not too many)
+      if (queueLength > 0) {
+        framesToRun = Math.min(NORMAL_SPEED_FRAMES + queueLength, MAX_CATCHUP_FRAMES);
       }
+
+      var loopStart = performance.now();
+
+      for (var f = 0; f < framesToRun; f++) {
+        if ((performance.now() - loopStart) > LOOP_TIME_BUDGET_MS) break;
+
+        // Try to process MCP command queue first
+        var processedMcp = processMcpQueueFrame();
+
+        if (!processedMcp) {
+          // No MCP command, just run normal game frame
+          runOneFrameWithAudio();
+        }
+      }
+
       // Copy PPU internal pixel buffer into canvas imageData
       snes.setPixels(imageData.data);
       ctx.putImageData(imageData, 0, 0);
@@ -1020,13 +1123,20 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
     speedBtn.addEventListener('click', function() { cycleSpeed(); });
     regionBtn.addEventListener('click', function() { toggleRegion(); });
 
-    // Save/Load state
-    var saveSlots = {};
+    // Save/Load state with localStorage persistence
+    var romId = '${romName.replace(/'/g, "\\'")}';
     var currentSlot = 1;
     var saveBtn = document.getElementById('btn-save');
     var loadBtn = document.getElementById('btn-load');
+    var slotSelector = document.getElementById('slot-selector');
     var toastEl = document.getElementById('toast');
     var toastTimer = null;
+
+    function slotKey(slot) { return 'snes_save_' + romId + '_' + slot; }
+
+    function hasSlotData(slot) {
+      return localStorage.getItem(slotKey(slot)) !== null;
+    }
 
     function showToast(msg) {
       toastEl.textContent = msg;
@@ -1035,36 +1145,52 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
       toastTimer = setTimeout(function() { toastEl.style.opacity = '0'; }, 1500);
     }
 
-    function cycleSlot() {
-      currentSlot = currentSlot >= 3 ? 1 : currentSlot + 1;
-      saveBtn.textContent = 'SAVE ' + currentSlot;
-      loadBtn.textContent = 'LOAD ' + currentSlot;
+    // Build 9 slot buttons
+    for (var i = 1; i <= 9; i++) {
+      var btn = document.createElement('button');
+      btn.className = 'slot-btn' + (i === 1 ? ' active' : '') + (hasSlotData(i) ? ' has-data' : '');
+      btn.textContent = i;
+      btn.dataset.slot = i;
+      btn.addEventListener('click', function() {
+        currentSlot = parseInt(this.dataset.slot);
+        slotSelector.querySelectorAll('.slot-btn').forEach(function(b) { b.classList.remove('active'); });
+        this.classList.add('active');
+      });
+      slotSelector.appendChild(btn);
+    }
+
+    function updateSlotIndicators() {
+      slotSelector.querySelectorAll('.slot-btn').forEach(function(b) {
+        var s = parseInt(b.dataset.slot);
+        b.classList.toggle('has-data', hasSlotData(s));
+      });
     }
 
     saveBtn.addEventListener('click', function() {
       if (!running) return;
-      saveSlots[currentSlot] = snes.saveState();
-      showToast('State saved to slot ' + currentSlot);
-    });
-
-    saveBtn.addEventListener('contextmenu', function(e) {
-      e.preventDefault();
-      cycleSlot();
+      var state = snes.saveState();
+      try {
+        localStorage.setItem(slotKey(currentSlot), JSON.stringify(state));
+        updateSlotIndicators();
+        showToast('State saved to slot ' + currentSlot);
+      } catch (e) {
+        showToast('Save failed — storage full');
+      }
     });
 
     loadBtn.addEventListener('click', function() {
       if (!running) return;
-      if (!saveSlots[currentSlot]) {
+      var data = localStorage.getItem(slotKey(currentSlot));
+      if (!data) {
         showToast('No save in slot ' + currentSlot);
         return;
       }
-      snes.loadState(saveSlots[currentSlot]);
-      showToast('State loaded from slot ' + currentSlot);
-    });
-
-    loadBtn.addEventListener('contextmenu', function(e) {
-      e.preventDefault();
-      cycleSlot();
+      try {
+        snes.loadState(JSON.parse(data));
+        showToast('State loaded from slot ' + currentSlot);
+      } catch (e) {
+        showToast('Load failed — corrupt data');
+      }
     });
 
     // Eject button goes back to ROM select
@@ -1092,31 +1218,30 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
         var msg;
         try { msg = JSON.parse(ev.data); } catch(e) { return; }
 
+        if (msg.type === 'command_queue' && msg.command) {
+          // New frame-by-frame command queue system
+          var cmd = msg.command;
+          if (cmd.id > mcpLastCommandId) {
+            mcpCommandQueue.push(cmd);
+            mcpLastCommandId = cmd.id;
+          }
+          // Commands will be consumed frame-by-frame in gameLoop
+        }
+
+        // Legacy handler (deprecated, kept for backward compatibility)
         if (msg.type === 'button_press' && msg.source === 'mcp') {
           var btnId = wsBtnNameToId[msg.button];
           if (btnId === undefined) return;
           var domId = wsBtnNameToDom[msg.button];
           var frames = msg.durationFrames || 25;
 
-          // MCP button press: server already advanced these frames,
-          // so we advance them here and skip in the game loop
-          snes.setPad1ButtonPressed(btnId);
-          for (var i = 0; i < frames; i++) {
-            snes.runFrame();
-          }
-          snes.setPad1ButtonReleased(btnId);
-          mcpSkipFrames += frames;
-
-          // Update canvas
-          snes.setPixels(imageData.data);
-          ctx.putImageData(imageData, 0, 0);
-
-          // Visual feedback on controller
-          var el = domId ? document.getElementById(domId) : null;
-          if (el) { el.classList.add('pressed'); el.classList.add('mcp-pressed'); }
-          setTimeout(function() {
-            if (el) { el.classList.remove('pressed'); el.classList.remove('mcp-pressed'); }
-          }, frames * (1000 / 60));
+          // Add to command queue for smooth playback
+          mcpCommandQueue.push({
+            type: 'button_press',
+            button: msg.button,
+            durationFrames: frames,
+            id: ++mcpLastCommandId
+          });
         }
 
         if (msg.type === 'button_press' && msg.source === 'browser') {
@@ -1144,23 +1269,22 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
         }
 
         if (msg.type === 'wait_frames') {
-          // Fast-forward browser emulator to match server
+          // Legacy: Add to command queue for smooth playback
           var n = msg.durationFrames || 0;
-          for (var i = 0; i < n; i++) {
-            snes.runFrame();
-          }
-          // Skip equivalent game loop frames to avoid double-advancing
-          mcpSkipFrames += n;
-          // Update canvas to show current state
-          snes.setPixels(imageData.data);
-          ctx.putImageData(imageData, 0, 0);
+          mcpCommandQueue.push({
+            type: 'wait_frames',
+            durationFrames: n,
+            id: ++mcpLastCommandId
+          });
         }
 
         if (msg.type === 'advance_frame') {
-          snes.runFrame();
-          mcpSkipFrames++;
-          snes.setPixels(imageData.data);
-          ctx.putImageData(imageData, 0, 0);
+          // Legacy: Add to command queue for smooth playback
+          mcpCommandQueue.push({
+            type: 'advance_frame',
+            durationFrames: 1,
+            id: ++mcpLastCommandId
+          });
         }
 
         if (msg.type === 'rom_loaded') {
@@ -1245,11 +1369,16 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
           break;
         case 'wait_frames':
           const duration_frames_wait = params?.duration_frames ?? 100;
+          const include_screenshot_wait = params?.include_screenshot ?? true;
           if (typeof duration_frames_wait !== 'number' || duration_frames_wait <= 0) {
             res.status(400).json({ error: 'Invalid duration_frames' });
             return;
           }
-          result = emulatorService.waitFrames(duration_frames_wait);
+          await emulatorService.waitFramesAsync(duration_frames_wait);
+          result = include_screenshot_wait ? emulatorService.getScreen() : {
+            type: 'text',
+            text: JSON.stringify({ waited_frames: duration_frames_wait })
+          };
           break;
         default:
           if (tool.startsWith('press_')) {
@@ -1259,12 +1388,16 @@ export function setupWebUI(app: express.Application, emulatorService: EmulatorSe
               return;
             }
             const duration_frames_press = params?.duration_frames ?? 25;
+            const include_screenshot_press = params?.include_screenshot ?? true;
             if (typeof duration_frames_press !== 'number' || duration_frames_press <= 0) {
               res.status(400).json({ error: 'Invalid duration_frames for press' });
               return;
             }
-            emulatorService.pressButton(buttonName as SNESButton, duration_frames_press);
-            result = emulatorService.getScreen();
+            await emulatorService.pressButtonAsync(buttonName as SNESButton, duration_frames_press);
+            result = include_screenshot_press ? emulatorService.getScreen() : {
+              type: 'text',
+              text: JSON.stringify({ button: buttonName, frames: duration_frames_press })
+            };
           } else {
             res.status(400).json({ error: `Unknown tool: ${tool}` });
             return;
