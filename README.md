@@ -6,9 +6,9 @@ Play SNES games through an MCP-compatible interface — load ROMs, press buttons
 
 ## Demo
 
-<video src="public/snes-mcp.webm" controls width="100%"></video>
+![Demo](public/snes-mcp-demo.gif)
 
-[Download demo video](public/snes-mcp.webm)
+[Download full demo video](public/snes-mcp.webm)
 
 ## Features
 
@@ -125,6 +125,8 @@ npm run debug
 | `press_l/r` | Press a shoulder button |
 | `press_start/select` | Press Start or Select |
 | `wait_frames` | Advance emulation by N frames |
+| `save_state` | Save emulator state to a slot (0-9) |
+| `load_state` | Load emulator state from a slot (0-9) |
 | `is_rom_loaded` | Check if a ROM is loaded |
 | `list_roms` | List available ROMs in the roms/ directory |
 
